@@ -883,22 +883,28 @@
 
   const locationGrid = document.getElementById('location-grid');
   const locationScreen = document.getElementById('location-screen');
+  const LOCATION_SELECT_ENABLED = true;
 
   function setLocation(url){
     room.style.backgroundImage = `url('${url}')`;
   }
 
-  locations.forEach((loc, i) => {
-    const card = document.createElement('div');
-    card.className = 'location-card';
-    card.style.backgroundImage = `url('${loc.url}')`;
-    card.innerHTML = `<div class="location-card-label">Комната ${i + 1}</div>`;
-    card.addEventListener('click', () => {
-      setLocation(loc.url);
-      locationScreen.style.display = 'none';
+  if (!LOCATION_SELECT_ENABLED){
+    if (locations.length) setLocation(locations[0].url);
+    locationScreen.style.display = 'none';
+  } else {
+    locations.forEach((loc, i) => {
+      const card = document.createElement('div');
+      card.className = 'location-card';
+      card.style.backgroundImage = `url('${loc.url}')`;
+      card.innerHTML = `<div class="location-card-label">Комната ${i + 1}</div>`;
+      card.addEventListener('click', () => {
+        setLocation(loc.url);
+        locationScreen.style.display = 'none';
+      });
+      locationGrid.appendChild(card);
     });
-    locationGrid.appendChild(card);
-  });
+  }
 
   // ---------- Отрисовка списка категорий в сайдбаре справа ----------
   categories.forEach((cat) => {
