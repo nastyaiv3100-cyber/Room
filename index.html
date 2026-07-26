@@ -771,12 +771,8 @@
 
         <div style="display:flex; gap:16px; margin-top:12px; align-items:flex-end; flex-wrap:wrap;">
           <div>
-            <span class="field-label">Размер текста</span>
-            <select id="loc-title-size-select">
-              <option value="34" ${state.locationScreen.titleSize===34?'selected':''}>Меньше</option>
-              <option value="48" ${state.locationScreen.titleSize===48?'selected':''}>Обычный</option>
-              <option value="60" ${state.locationScreen.titleSize===60?'selected':''}>Больше</option>
-            </select>
+            <span class="field-label">Размер (px)</span>
+            <input type="number" id="loc-title-size-input" value="${state.locationScreen.titleSize}" min="16" max="120" style="width:80px;">
           </div>
           <div>
             <span class="field-label">Цвет текста</span>
@@ -808,8 +804,9 @@
       state.text.locationSub = e.target.value;
       schedulePreview();
     });
-    wrap.querySelector('#loc-title-size-select').addEventListener('change', (e) => {
-      state.locationScreen.titleSize = parseInt(e.target.value, 10);
+    wrap.querySelector('#loc-title-size-input').addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      state.locationScreen.titleSize = isNaN(val) ? 48 : val;
       schedulePreview();
     });
     wrap.querySelector('#loc-title-color-input').addEventListener('input', (e) => {
