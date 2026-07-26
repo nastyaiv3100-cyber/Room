@@ -6,6 +6,9 @@
 <title>Комната — прототип механики</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 <style>
   :root{
     --wall-deep: #2c2116;
@@ -410,6 +413,8 @@
     margin:0 0 18px;
     line-height:1.4;
   }
+  #task-card .katex{ color:inherit; font-size:1.05em; }
+  #task-card .katex-display{ margin:8px 0; }
   .task-options{ display:flex; flex-direction:column; gap:10px; }
   .task-opt{
     background:rgba(255,130,52,0.08);
@@ -804,6 +809,19 @@
     else renderQuizTask(task);
 
     overlay.classList.add('visible');
+    renderMathIn(document.getElementById('task-card'));
+  }
+
+  function renderMathIn(el){
+    if (window.renderMathInElement){
+      renderMathInElement(el, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false}
+        ],
+        throwOnError: false
+      });
+    }
   }
 
   function completeTask(){
