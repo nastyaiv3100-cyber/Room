@@ -393,6 +393,62 @@
     z-index:50;
   }
   #task-overlay.visible{ display:flex; }
+
+  /* ---------- Экран поздравления при 100% ---------- */
+  #completion-screen{
+    position:fixed; inset:0;
+    background:rgba(10,7,16,0.82);
+    display:none; align-items:center; justify-content:center;
+    z-index:200;
+    padding:24px;
+  }
+  #completion-screen.visible{ display:flex; }
+  .completion-card{
+    background:linear-gradient(180deg, #3d2f1e, #2c2116);
+    border:2px solid var(--gold);
+    border-radius:20px;
+    padding:32px 34px;
+    width:min(400px, 90vw);
+    max-height:88vh;
+    overflow-y:auto;
+    text-align:center;
+    box-shadow:0 24px 60px rgba(0,0,0,0.55);
+  }
+  .completion-star{
+    font-size:38px;
+    letter-spacing:6px;
+    margin-bottom:6px;
+    color:var(--gold);
+    text-shadow:0 0 16px rgba(255,130,52,0.6);
+  }
+  .completion-title{
+    font-family:'Cormorant Garamond', serif;
+    font-size:28px; font-weight:700;
+    color:var(--gold-soft);
+    margin-bottom:8px;
+  }
+  .completion-sub{
+    font-size:14px;
+    color:rgba(243,234,217,0.85);
+    margin-bottom:18px;
+    line-height:1.4;
+  }
+  .completion-image{
+    width:100%; max-width:260px;
+    border-radius:14px;
+    margin:0 auto 20px;
+    display:block;
+    box-shadow:0 10px 26px rgba(0,0,0,0.4);
+  }
+  .completion-btn{
+    background:linear-gradient(180deg, var(--gold), #e6691c);
+    color:var(--ink);
+    border:none;
+    padding:12px 30px;
+    border-radius:12px;
+    font-size:15px; font-weight:700;
+    cursor:pointer;
+  }
   #task-card{
     background:linear-gradient(180deg, #3d2f1e, #2c2116);
     border:1px solid var(--gold);
@@ -557,6 +613,16 @@
       <p id="task-question"></p>
       <div id="task-body"></div>
       <button id="task-close">Закрыть</button>
+    </div>
+  </div>
+
+  <div id="completion-screen">
+    <div class="completion-card">
+      <div class="completion-star">★ ★ ★</div>
+      <div class="completion-title">Отличная работа!</div>
+      <div class="completion-sub">Комната полностью готова</div>
+      <img class="completion-image" id="completion-image" src="" alt="">
+      <button class="completion-btn" id="completion-close">Продолжить</button>
     </div>
   </div>
 
@@ -1266,6 +1332,21 @@
   });
 
   // ---------- Прогресс ----------
+  // ---------- Экран поздравления при 100% ----------
+  const COMPLETION_ENABLED = true;
+  const completionScreen = document.getElementById('completion-screen');
+  const completionImage = document.getElementById('completion-image');
+  const completionClose = document.getElementById('completion-close');
+  let completionShown = false;
+
+  if (!completionImage.getAttribute('src')){
+    completionImage.style.display = 'none';
+  }
+
+  completionClose.addEventListener('click', () => {
+    completionScreen.classList.remove('visible');
+  });
+
   function updateProgress(){
     const done = categories.reduce((sum, c) => {
       return sum + (c.solved ? 1 : 0) + (c.placed ? 1 : 0);
@@ -1273,6 +1354,11 @@
     const pct = Math.min(100, Math.round((done / totalSteps) * 100));
     progressFill.style.width = pct + '%';
     progressPct.textContent = pct + '%';
+
+    if (pct === 100 && !completionShown && COMPLETION_ENABLED){
+      completionShown = true;
+      setTimeout(() => completionScreen.classList.add('visible'), 400);
+    }
   }
 
 })();
