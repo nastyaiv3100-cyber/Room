@@ -530,6 +530,21 @@
   }
   #task-card .katex{ color:inherit; font-size:1.05em; }
   #task-card .katex-display{ margin:8px 0; }
+  #task-question-image{
+    display:block;
+    width:100%; max-height:180px;
+    object-fit:contain;
+    border-radius:12px;
+    margin:0 0 14px;
+    background:rgba(0,0,0,0.15);
+  }
+  .task-opt-image{
+    display:block;
+    width:100%; max-height:120px;
+    object-fit:contain;
+    border-radius:8px;
+    margin-bottom:6px;
+  }
   .task-options{ display:flex; flex-direction:column; gap:10px; }
   .task-opt{
     background:rgba(255,130,52,0.08);
@@ -626,6 +641,41 @@
   .order-feedback.wrong{ color:var(--danger); }
   .order-feedback.correct{ color:var(--glow); }
 
+  /* Собери предложение */
+  .sentence-assembled{
+    min-height:40px;
+    padding:10px 12px;
+    border:1px dashed rgba(255,130,52,0.5);
+    border-radius:10px;
+    margin-bottom:14px;
+    font-size:15.5px;
+    color:var(--cream);
+    line-height:1.5;
+  }
+  .sentence-placeholder{ color:rgba(243,234,217,0.35); font-style:italic; }
+  .sentence-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .sentence-chip{
+    background:rgba(255,130,52,0.08);
+    border:1px solid rgba(255,130,52,0.4);
+    color:var(--cream);
+    padding:8px 14px;
+    border-radius:9px;
+    font-size:14px;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .sentence-chip:hover{ background:rgba(255,130,52,0.18); }
+  .sentence-chip.used{ opacity:0.3; cursor:default; }
+  .sentence-chip.shake{
+    border-color:var(--danger);
+    animation:chip-shake 0.4s ease;
+  }
+  @keyframes chip-shake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-5px); }
+    75%{ transform:translateX(5px); }
+  }
+
   #task-close{
     margin-top:18px;
     background:none; border:none;
@@ -670,6 +720,7 @@
   <div id="task-overlay">
     <div id="task-card">
       <h3 id="task-title">Задание</h3>
+      <img id="task-question-image" src="" alt="" style="display:none;">
       <p id="task-question"></p>
       <div id="task-body"></div>
       <button id="task-close">Закрыть</button>
@@ -927,6 +978,8 @@
     });
   });
 
+  const taskQuestionImage = document.getElementById('task-question-image');
+
   function openTask(cat){
     currentTaskCat = cat;
     const task = cat.task;
@@ -935,11 +988,19 @@
     taskQuestion.textContent = task.question || '';
     taskBody.innerHTML = '';
 
+    if (task.questionImage){
+      taskQuestionImage.src = task.questionImage;
+      taskQuestionImage.style.display = 'block';
+    } else {
+      taskQuestionImage.style.display = 'none';
+    }
+
     if (type === 'quiz') renderQuizTask(task);
     else if (type === 'truefalse') renderTrueFalseTask(task);
     else if (type === 'input') renderInputTask(task);
     else if (type === 'match') renderMatchTask(task);
     else if (type === 'order') renderOrderTask(task);
+    else if (type === 'sentence') renderSentenceTask(task);
     else renderQuizTask(task);
 
     overlay.classList.add('visible');
@@ -1062,7 +1123,8 @@
     (task.options || []).forEach(opt => {
       const btn = document.createElement('button');
       btn.className = 'task-opt';
-      btn.textContent = opt.text;
+      const imgHtml = opt.img ? `<img class="task-opt-image" src="${opt.img}" alt="">` : '';
+      btn.innerHTML = `${imgHtml}<span>${opt.text || ''}</span>`;
       btn.addEventListener('click', () => {
         if (opt.correct){
           btn.classList.add('correct');
@@ -1266,6 +1328,59 @@
     wrap.appendChild(list);
     wrap.appendChild(checkBtn);
     wrap.appendChild(feedback);
+    taskBody.appendChild(wrap);
+  }
+
+  // ---- Тип: собери предложение ----
+  function renderSentenceTask(task){
+    const words = task.words || [];
+    const shuffled = words.map((w, i) => ({text: w, idx: i}));
+    for (let i = shuffled.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    const wrap = document.createElement('div');
+    const assembledRow = document.createElement('div');
+    assembledRow.className = 'sentence-assembled';
+    const chipsRow = document.createElement('div');
+    chipsRow.className = 'sentence-chips';
+
+    let nextIndex = 0;
+
+    function renderAssembled(){
+      if (nextIndex === 0){
+        assembledRow.innerHTML = '<span class="sentence-placeholder">…</span>';
+      } else {
+        assembledRow.innerHTML = words.slice(0, nextIndex)
+          .map(w => `<span class="sentence-word">${w}</span>`).join(' ');
+      }
+    }
+    renderAssembled();
+
+    shuffled.forEach(item => {
+      const chip = document.createElement('button');
+      chip.className = 'sentence-chip';
+      chip.textContent = item.text;
+      chip.addEventListener('click', () => {
+        if (chip.disabled) return;
+        if (item.idx === nextIndex){
+          chip.disabled = true;
+          chip.classList.add('used');
+          nextIndex++;
+          renderAssembled();
+          if (nextIndex === words.length) completeTask();
+        } else {
+          playWrongSound();
+          chip.classList.add('shake');
+          setTimeout(() => chip.classList.remove('shake'), 400);
+        }
+      });
+      chipsRow.appendChild(chip);
+    });
+
+    wrap.appendChild(assembledRow);
+    wrap.appendChild(chipsRow);
     taskBody.appendChild(wrap);
   }
 
