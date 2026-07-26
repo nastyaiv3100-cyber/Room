@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Редактор комнаты</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wall-deep: #2a2420;
+    --wall-mid: #4a3d33;
+    --wall-light: #6b5a4a;
+    --gold: #8fb8dc;
+    --gold-soft: #5c4630;
+    --glow: #b98a63;
+    --cream: #211c17;
+    --ink: #f3e9d7;
+    --danger: #d16a5a;
+    --panel: #241f1a;
+    --panel-light: #3a3128;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0;
+    background:var(--ink);
+    font-family:'Nunito Sans', sans-serif;
+    color:var(--cream);
+  }
+  h1,h2,h3{
+    font-family:'Cormorant Garamond', serif;
+    margin:0;
+  }
+  #app{ max-width:1800px; margin:0 auto; padding:26px 22px 80px; }
+
+  /* ---------- Шапка ---------- */
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px; flex-wrap:wrap;
+    padding-bottom:20px; margin-bottom:22px;
+    border-bottom:1px solid rgba(143,184,220,0.25);
+  }
+  header h1{ font-size:30px; color:var(--gold-soft); font-weight:700; }
+  header p{ margin:4px 0 0; font-size:13.5px; color:rgba(58,47,34,0.65); }
+
+  /* ---------- Сплит: редактор + превью ---------- */
+  #main-layout{
+    display:flex; gap:24px; align-items:flex-start;
+  }
+  #editor-col{ flex:1 1 0; min-width:0; max-width:640px; }
+  #preview-col{
+    flex:1 1 0;
+    min-width:520px;
+    position:sticky; top:20px;
+  }
+  #preview-frame-wrap{
+    border:2px solid rgba(143,184,220,0.35);
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:0 12px 30px rgba(0,0,0,0.25);
+  }
+  #preview-frame{
+    display:block;
+    width:100%; height:640px;
+    border:none;
+    background:#0e0b08;
+  }
+  #preview-label{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:10px;
+  }
+  #preview-label h2{ font-size:20px; color:var(--gold-soft); }
+  #preview-status{
+    font-size:11.5px; color:rgba(185,138,99,0.9);
+  }
+  @media (max-width: 1280px){
+    #main-layout{ flex-direction:column; }
+    #editor-col{ max-width:none; }
+    #preview-col{ position:static; width:100%; min-width:0; }
+    #preview-frame{ height:640px; }
+  }
+
+  /* ---------- Вкладки ---------- */
+  #tabs-bar{
+    display:flex; gap:4px; flex-wrap:wrap;
+    margin-bottom:20px;
+    border-bottom:1px solid rgba(143,184,220,0.3);
+  }
+  .tab-btn{
+    padding:10px 15px;
+    background:none; border:none;
+    border-bottom:3px solid transparent;
+    font-size:13.5px; font-weight:700;
+    color:rgba(58,47,34,0.5);
+    cursor:pointer;
+    font-family:'Nunito Sans', sans-serif;
+    transition:color .15s ease;
+  }
+  .tab-btn:hover{ color:var(--gold-soft); }
+  .tab-btn.active{ color:var(--gold-soft); border-bottom-color:var(--gold); }
+
+  /* ---------- Секции ---------- */
+  .section-title{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .section-title h2{ font-size:20px; color:var(--gold-soft); }
+  .section-hint{ font-size:12.5px; color:rgba(58,47,34,0.6); margin:-8px 0 16px; }
+  .add-btn{
+    background:rgba(185,138,99,0.15);
+    color:var(--glow);
+    border:1px solid rgba(185,138,99,0.5);
+    padding:8px 16px;
+    border-radius:9px;
+    font-size:13px; font-weight:700;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .add-btn:hover{ background:rgba(185,138,99,0.28); }
+
+  /* ---------- Локации ---------- */
+  #locations-list{ display:flex; flex-wrap:wrap; gap:14px; }
+  .location-row{
+    display:flex; align-items:center; gap:8px;
+    background:var(--panel);
+    border:1px solid rgba(143,184,220,0.2);
+    border-radius:10px;
+    padding:8px 10px;
+    width:280px;
+  }
+  .location-thumb{
+    width:44px; height:34px;
+    border-radius:6px;
+    background-size:cover; background-position:center;
+    background-color:var(--panel-light);
+    flex:0 0 auto;
+  }
+  .location-row input{ flex:1; min-width:0; }
+  .remove-btn{
+    flex:0 0 auto;
+    background:none;
+    border:1px solid rgba(209,106,90,0.5);
+    color:var(--danger);
+    width:26px; height:26px;
+    border-radius:7px;
+    cursor:pointer;
+    font-size:14px; font-weight:700;
+    line-height:1;
+  }
+  .remove-btn:hover{ background:rgba(209,106,90,0.15); }
+
+  input[type="text"], input[type="number"], input[type="color"], textarea, select{
+    background:var(--wall-deep);
+    border:1px solid rgba(143,184,220,0.3);
+    color:var(--gold);
+    border-radius:7px;
+    padding:8px 10px;
+    font-family:'Nunito Sans', sans-serif;
+    font-size:13.5px;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, textarea:focus, select:focus{
+    outline:none; border-color:var(--gold);
+  }
+  input::placeholder, textarea::placeholder{ color:rgba(143,184,220,0.45); }
+
+  /* ---------- Категории ---------- */
+  .category-card{
+    background:var(--panel);
+    border:1px solid rgba(143,184,220,0.22);
+    border-radius:14px;
+    padding:18px 20px;
+    margin-bottom:16px;
+  }
+  .cat-top{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .cat-top input[type="text"].cat-label{
+    font-size:17px; font-weight:700; font-family:'Cormorant Garamond', serif;
+    color:var(--gold);
+    flex:1; min-width:160px;
+    background:transparent; border:none; border-bottom:1px solid rgba(143,184,220,0.3);
+    border-radius:0; padding:4px 2px;
+  }
+  .cat-active-toggle{ display:flex; align-items:center; gap:6px; font-size:13px; color:rgba(250,230,216,0.75); white-space:nowrap; }
+  .cat-basesize{ display:flex; align-items:center; gap:6px; font-size:13px; color:rgba(250,230,216,0.75); white-space:nowrap; }
+  .cat-basesize input{ width:64px; }
+  .cat-remove{
+    background:none; border:1px solid rgba(209,106,90,0.5); color:var(--danger);
+    padding:6px 12px; border-radius:8px; font-size:12.5px; cursor:pointer; font-weight:700;
+  }
+  .cat-remove:hover{ background:rgba(209,106,90,0.15); }
+
+  .cat-body{ display:flex; gap:22px; flex-wrap:wrap; }
+  .cat-task{ flex:1; min-width:260px; }
+  .cat-items{ flex:1; min-width:260px; }
+
+  .field-label{
+    display:block; font-size:11.5px; text-transform:uppercase; letter-spacing:0.5px;
+    color:rgba(250,230,216,0.45); margin:0 0 5px;
+  }
+  .cat-task input[type="text"]{ width:100%; margin-bottom:10px; }
+  .option-row{ display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+  .option-row input[type="radio"]{ accent-color:var(--glow); flex:0 0 auto; }
+  .option-row input[type="text"]{ flex:1; }
+  .option-hint{ font-size:11px; color:rgba(250,230,216,0.4); margin:2px 0 12px; }
+
+  .item-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .item-thumb{
+    width:36px; height:36px; border-radius:6px; flex:0 0 auto;
+    background-size:contain; background-position:center; background-repeat:no-repeat;
+    background-color:var(--panel-light);
+  }
+  .item-row input[type="text"]{ flex:1; min-width:0; }
+  .add-item-btn{
+    margin-top:4px;
+    background:none; border:1px dashed rgba(143,184,220,0.5); color:var(--gold-soft);
+    padding:7px 12px; border-radius:8px; font-size:12.5px; cursor:pointer; width:100%;
+  }
+  .add-item-btn:hover{ background:rgba(143,184,220,0.1); }
+
+  /* ---------- Текст / шрифт ---------- */
+  .field-block{ margin-bottom:20px; }
+  .field-block label.title{
+    display:block; font-size:13px; font-weight:700; color:var(--gold-soft); margin-bottom:6px;
+  }
+  .field-block select, .field-block input[type="text"]{ width:100%; }
+  .font-preview{
+    margin-top:10px; padding:14px 16px;
+    background:var(--panel); border:1px solid rgba(143,184,220,0.2); border-radius:10px;
+  }
+  .font-preview .fp-h{ font-size:22px; color:var(--gold-soft); margin-bottom:4px; }
+  .font-preview .fp-b{ font-size:13.5px; color:rgba(250,230,216,0.75); }
+
+  /* ---------- Редактор текста ---------- */
+  .text-field-row{ margin-bottom:16px; }
+  .text-field-row label{
+    display:block; font-size:12px; color:rgba(58,47,34,0.65); margin-bottom:5px;
+  }
+  .text-field-row input[type="text"]{ width:100%; }
+
+  /* ---------- Дизайн ---------- */
+  .color-row{
+    display:flex; align-items:center; gap:12px; margin-bottom:16px;
+  }
+  .color-row label{ flex:1; font-size:13.5px; color:rgba(58,47,34,0.75); }
+  .color-row input[type="color"]{
+    width:46px; height:34px; padding:2px; cursor:pointer;
+  }
+  .design-preview{
+    margin-top:6px; padding:18px;
+    background:#1c1430; border-radius:14px;
+    display:flex; flex-direction:column; gap:9px;
+  }
+  .design-opt-demo{
+    padding:10px 14px; border-radius:9px; border:1px solid; font-size:13.5px;
+    background:rgba(255,255,255,0.05); color:#f3ead9;
+  }
+
+  /* ---------- Экспорт ---------- */
+  #export-panel{
+    background:var(--panel);
+    border:1px solid rgba(185,138,99,0.3);
+    border-radius:14px;
+    padding:20px 22px;
+  }
+  #download-btn, #copy-btn{
+    display:inline-block;
+    background:linear-gradient(180deg, var(--gold), #5f8fc0);
+    color:#211c17;
+    border:none;
+    padding:13px 22px;
+    border-radius:12px;
+    font-size:14.5px; font-weight:700;
+    cursor:pointer;
+    box-shadow:0 6px 18px rgba(143,184,220,0.35);
+    transition:transform .15s ease;
+    margin-right:10px; margin-bottom:10px;
+  }
+  #copy-btn{
+    background:linear-gradient(180deg, var(--glow), #8a5c3a);
+    box-shadow:0 6px 18px rgba(185,138,99,0.35);
+  }
+  #download-btn:hover, #copy-btn:hover{ transform:translateY(-2px); }
+  #export-info{ font-size:12.5px; color:rgba(58,47,34,0.7); margin-top:4px; }
+  #instructions{ margin-top:22px; font-size:13.5px; line-height:1.6; color:rgba(250,230,216,0.85); }
+  #instructions h3{ color:var(--glow); font-size:17px; margin-bottom:10px; }
+  #instructions ol{ margin:0; padding-left:20px; }
+  #instructions li{ margin-bottom:6px; }
+  #instructions code{
+    background:rgba(185,138,99,0.15);
+    padding:1px 6px; border-radius:5px;
+    color:var(--gold-soft);
+    font-size:12.5px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div>
+      <h1>Редактор комнаты</h1>
+      <p>Настрой локации, задания, текст и дизайн — потом скачай готовую игру одним файлом</p>
+    </div>
+  </header>
+
+  <div id="main-layout">
+    <div id="editor-col">
+
+      <div id="tabs-bar"></div>
+      <div id="tab-content"></div>
+
+    </div>
+
+    <div id="preview-col">
+      <div id="preview-label">
+        <h2>Превью</h2>
+        <span id="preview-status">обновляется вживую</span>
+      </div>
+      <div id="preview-frame-wrap">
+        <iframe id="preview-frame"></iframe>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+
+  const ENGINE_TEMPLATE = "<!DOCTYPE html>\n<html lang=\"__LANG__\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>\u041a\u043e\u043c\u043d\u0430\u0442\u0430 \u2014 \u043f\u0440\u043e\u0442\u043e\u0442\u0438\u043f \u043c\u0435\u0445\u0430\u043d\u0438\u043a\u0438</title>\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link href=\"__FONT_LINK__\" rel=\"stylesheet\">\n<style>\n  :root{\n    --wall-deep: #2c2116;\n    --wall-mid: #4a3a26;\n    --wall-light: #6b5236;\n    --gold: __COLOR_GOLD__;\n    --gold-soft: __COLOR_GOLD_SOFT__;\n    --glow: __COLOR_GLOW__;\n    --cream: #fae6d8;\n    --ink: #201a13;\n    --danger: __COLOR_DANGER__;\n  }\n  *{box-sizing:border-box;}\n  html,body{\n    margin:0; padding:0; height:100%;\n    background:var(--ink);\n    font-family:__FONT_BODY__;\n    color:var(--cream);\n    overflow:hidden;\n    -webkit-user-select:none; user-select:none;\n  }\n  #app{\n    width:100%; height:100%;\n    display:flex; flex-direction:column;\n    position:relative;\n  }\n\n  /* ---------- \u041f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 ---------- */\n  #progress-bar{\n    flex:0 0 auto;\n    padding:14px 22px 12px;\n    background:linear-gradient(180deg, #3d2f1e, #2f2417);\n    border-bottom:1px solid rgba(255,130,52,0.25);\n    display:flex; align-items:center; gap:16px;\n    z-index:20;\n  }\n  #progress-label{\n    font-family:__FONT_DISPLAY__;\n    font-size:20px; font-weight:600;\n    color:var(--gold-soft);\n    white-space:nowrap;\n  }\n  #progress-track{\n    flex:1;\n    height:10px;\n    border-radius:6px;\n    background:rgba(0,0,0,0.35);\n    overflow:hidden;\n    box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);\n  }\n  #progress-fill{\n    height:100%;\n    width:0%;\n    background:linear-gradient(90deg, var(--glow), var(--gold));\n    border-radius:6px;\n    transition:width 0.6s cubic-bezier(.4,1.4,.6,1);\n  }\n  #progress-pct{\n    font-weight:700;\n    color:var(--glow);\n    min-width:44px;\n    text-align:right;\n  }\n\n  /* ---------- \u0421\u0442\u0430\u0440\u0442\u043e\u0432\u044b\u0439 \u044d\u043a\u0440\u0430\u043d \u0432\u044b\u0431\u043e\u0440\u0430 \u043b\u043e\u043a\u0430\u0446\u0438\u0438 ---------- */\n  #location-screen{\n    position:fixed; inset:0;\n    z-index:100;\n    background:radial-gradient(circle at 50% 30%, #3d2f1e, #201911 75%);\n    display:flex; flex-direction:column; align-items:center; justify-content:flex-start;\n    overflow-y:auto;\n    gap:22px;\n    padding:48px 24px;\n  }\n  #location-screen-title{\n    font-family:__FONT_DISPLAY__;\n    font-size:48px; font-weight:700;\n    color:var(--gold-soft);\n    text-align:center;\n    letter-spacing:0.3px;\n  }\n  #location-screen-sub{\n    margin-top:-18px;\n    font-size:16px;\n    color:rgba(243,234,217,0.6);\n    text-align:center;\n  }\n  #location-grid{\n    display:flex; flex-wrap:wrap;\n    justify-content:center;\n    gap:26px;\n    max-width:1100px;\n  }\n  .location-card{\n    width:260px; height:190px;\n    border-radius:16px;\n    background-size:cover;\n    background-position:center;\n    border:2px solid rgba(255,130,52,0.35);\n    cursor:pointer;\n    position:relative;\n    overflow:hidden;\n    transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;\n  }\n  .location-card:hover{\n    transform:translateY(-4px) scale(1.02);\n    border-color:var(--gold);\n    box-shadow:0 10px 26px rgba(0,0,0,0.45);\n  }\n  .location-card::after{\n    content:'';\n    position:absolute; inset:0;\n    background:linear-gradient(180deg, transparent 55%, rgba(10,7,16,0.55) 100%);\n  }\n  .location-card-label{\n    position:absolute;\n    left:10px; bottom:8px;\n    z-index:1;\n    font-size:13px; font-weight:700;\n    color:var(--cream);\n    text-shadow:0 1px 3px rgba(0,0,0,0.7);\n  }\n\n  /* ---------- \u041a\u043e\u043c\u043d\u0430\u0442\u0430 ---------- */\n  #room{\n    flex:1 1 auto;\n    position:relative;\n    display:flex;\n    overflow:hidden;\n  }\n  #room-visual{\n    flex:1 1 auto;\n    position:relative;\n    display:flex;\n    background-color:var(--wall-deep);\n    background-size:contain;\n    background-position:center top;\n    background-repeat:no-repeat;\n    overflow:hidden;\n  }\n  .wall-seg{\n    flex:1;\n    position:relative;\n  }\n\n  /* ---------- \u0421\u043f\u0438\u0441\u043e\u043a \u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u0439 (\u0441\u043f\u0440\u0430\u0432\u0430) ---------- */\n  #category-list{\n    flex:0 0 210px;\n    background:linear-gradient(180deg, #382b1b, #271f15);\n    border-left:1px solid rgba(255,130,52,0.25);\n    padding:16px 12px;\n    display:flex; flex-direction:column; gap:8px;\n    overflow-y:auto;\n  }\n  #category-list-title{\n    font-family:__FONT_DISPLAY__;\n    font-size:17px; font-weight:600;\n    color:var(--gold-soft);\n    margin:0 4px 6px;\n    letter-spacing:0.3px;\n  }\n  .lock-slot{\n    display:flex; align-items:center; gap:12px;\n    width:100%;\n    padding:9px 10px;\n    border-radius:10px;\n    cursor:pointer;\n    transition:background .2s ease;\n  }\n  .lock-slot.active:hover{ background:rgba(255,130,52,0.1); }\n  .lock-slot.solved:hover{ background:rgba(163,191,111,0.1); }\n  .lock-slot.viewing{ background:rgba(163,191,111,0.16); }\n  .lock-icon{\n    flex:0 0 auto;\n    width:44px; height:44px;\n    border-radius:50%;\n    background:radial-gradient(circle at 35% 30%, #5a4066, #241a35 75%);\n    border:2px solid var(--gold);\n    display:flex; align-items:center; justify-content:center;\n    font-size:20px;\n    box-shadow:0 0 0 rgba(255,130,52,0);\n    transition:box-shadow .3s ease, transform .2s ease;\n  }\n  .lock-slot.active .lock-icon{\n    animation:pulse-glow 2.2s ease-in-out infinite;\n    cursor:pointer;\n  }\n  .lock-slot.solved .lock-icon{\n    background:radial-gradient(circle at 35% 30%, #3d6b5c, #1c3a30 75%);\n    border-color:var(--glow);\n    box-shadow:0 0 18px rgba(163,191,111,0.55);\n  }\n  .lock-slot.disabled .lock-icon{\n    opacity:0.45;\n    cursor:default;\n  }\n  @keyframes pulse-glow{\n    0%,100%{ box-shadow:0 0 10px rgba(255,130,52,0.55); transform:scale(1); }\n    50%{ box-shadow:0 0 26px rgba(255,130,52,0.95); transform:scale(1.06); }\n  }\n  .lock-label{\n    flex:1 1 auto;\n    font-size:13.5px;\n    font-weight:600;\n    text-align:left;\n    color:var(--gold-soft);\n    line-height:1.25;\n  }\n  .lock-slot.disabled .lock-label{ opacity:0.55; }\n\n  .placed-item{\n    position:absolute;\n    touch-action:none;\n  }\n  .item-visual{\n    position:absolute;\n    inset:0;\n    display:flex; align-items:center; justify-content:center;\n    transform-origin:center center;\n    cursor:grab;\n    filter:drop-shadow(0 4px 6px rgba(0,0,0,0.45));\n  }\n  .item-visual:active{ cursor:grabbing; }\n  .placed-item.selected .item-visual{\n    outline:2px dashed var(--glow);\n    outline-offset:6px;\n    border-radius:8px;\n  }\n  .placed-item .glyph{\n    font-size:40px;\n    line-height:1;\n    pointer-events:none;\n  }\n  .placed-item img{\n    width:100%; height:100%;\n    object-fit:contain;\n    pointer-events:none;\n  }\n\n  /* \u042f\u043a\u043e\u0440\u044c: \u0443\u0432\u0435\u043b\u0438\u0447\u0435\u043d\u0438\u0435 + \u0441\u0432\u043e\u0431\u043e\u0434\u043d\u044b\u0439 \u043f\u043e\u0432\u043e\u0440\u043e\u0442 \u043e\u0434\u043d\u0438\u043c \u0434\u0432\u0438\u0436\u0435\u043d\u0438\u0435\u043c */\n  .item-handle{\n    position:absolute;\n    right:-9px; bottom:-9px;\n    width:18px; height:18px;\n    border-radius:50%;\n    background:var(--glow);\n    border:2px solid var(--ink);\n    box-shadow:0 0 6px rgba(163,191,111,0.7);\n    display:none;\n    cursor:grab;\n    z-index:2;\n  }\n  .item-handle:active{ cursor:grabbing; }\n  .placed-item.selected .item-handle{ display:block; }\n\n  /* \u041a\u043d\u043e\u043f\u043a\u0430 \u0443\u0431\u0440\u0430\u0442\u044c \u043f\u0440\u0435\u0434\u043c\u0435\u0442 \u2014 \u043d\u0435 \u043d\u0430\u0441\u043b\u0435\u0434\u0443\u0435\u0442 \u043f\u043e\u0432\u043e\u0440\u043e\u0442/\u043c\u0430\u0441\u0448\u0442\u0430\u0431 */\n  .item-delete{\n    position:absolute;\n    top:-11px; left:-11px;\n    width:22px; height:22px;\n    border-radius:50%;\n    background:var(--danger);\n    color:var(--ink);\n    border:none;\n    font-size:14px; font-weight:700; line-height:1;\n    display:none;\n    align-items:center; justify-content:center;\n    cursor:pointer;\n    z-index:3;\n  }\n  .placed-item.selected .item-delete{ display:flex; }\n\n  /* \u041a\u043d\u043e\u043f\u043a\u0438 \u043e\u0442\u0440\u0430\u0436\u0435\u043d\u0438\u044f \u2014 \u0442\u043e\u0436\u0435 \u043d\u0435 \u043d\u0430\u0441\u043b\u0435\u0434\u0443\u044e\u0442 \u043f\u043e\u0432\u043e\u0440\u043e\u0442/\u043c\u0430\u0441\u0448\u0442\u0430\u0431 */\n  .item-flip{\n    position:absolute;\n    width:20px; height:20px;\n    border-radius:50%;\n    background:var(--wall-light);\n    color:var(--gold-soft);\n    border:2px solid var(--ink);\n    font-size:12px; font-weight:700; line-height:1;\n    display:none;\n    align-items:center; justify-content:center;\n    cursor:pointer;\n    z-index:2;\n  }\n  .item-flip:hover{ background:var(--gold); color:var(--ink); }\n  .placed-item.selected .item-flip{ display:flex; }\n  .item-flip-h{ top:-10px; right:-10px; }\n  .item-flip-v{ bottom:-10px; left:-10px; }\n\n  /* ---------- \u0418\u043d\u0432\u0435\u043d\u0442\u0430\u0440\u044c ---------- */\n  #tray{\n    flex:0 0 auto;\n    max-height:190px;\n    background:linear-gradient(180deg, #271f15, #1c160f);\n    border-top:1px solid rgba(255,130,52,0.25);\n    display:flex; flex-direction:column;\n    gap:2px;\n    padding:10px 18px;\n    overflow-y:auto;\n  }\n  #tray .empty-note{\n    color:rgba(243,234,217,0.45);\n    font-style:italic;\n    font-size:14px;\n    padding:8px 0;\n  }\n  .tray-group{\n    display:flex; align-items:center; gap:14px;\n    padding:8px 0;\n  }\n  .tray-group + .tray-group{\n    border-top:1px solid rgba(255,130,52,0.12);\n  }\n  .tray-group-label{\n    flex:0 0 92px;\n    font-size:12.5px;\n    font-weight:700;\n    color:var(--gold-soft);\n    letter-spacing:0.2px;\n    line-height:1.2;\n  }\n  .tray-group-items{\n    flex:1;\n    display:flex; align-items:center;\n    gap:12px;\n    overflow-x:auto;\n    padding:2px 0;\n  }\n  .tray-item{\n    flex:0 0 auto;\n    width:64px; height:64px;\n    border-radius:10px;\n    background:rgba(255,130,52,0.08);\n    border:1px solid rgba(255,130,52,0.35);\n    display:flex; align-items:center; justify-content:center;\n    font-size:32px;\n    cursor:grab;\n    transition:transform .15s ease;\n  }\n  .tray-item:hover{ transform:translateY(-3px); }\n  .tray-item.dragging{ opacity:0.3; }\n  .tray-item img{\n    width:100%; height:100%;\n    object-fit:contain;\n    pointer-events:none;\n  }\n\n  /* ---------- \u041c\u043e\u0434\u0430\u043b\u043a\u0430 \u0437\u0430\u0434\u0430\u043d\u0438\u044f ---------- */\n  #task-overlay{\n    position:fixed; inset:0;\n    background:rgba(10,7,16,0.72);\n    display:none; align-items:center; justify-content:center;\n    z-index:50;\n  }\n  #task-overlay.visible{ display:flex; }\n  #task-card{\n    background:linear-gradient(180deg, #3d2f1e, #2c2116);\n    border:1px solid var(--gold);\n    border-radius:16px;\n    padding:28px 30px;\n    width:min(420px, 88vw);\n    box-shadow:0 20px 50px rgba(0,0,0,0.5);\n  }\n  #task-card h3{\n    font-family:__FONT_DISPLAY__;\n    font-size:26px;\n    color:var(--gold-soft);\n    margin:0 0 6px;\n  }\n  #task-card p{\n    font-size:14.5px;\n    color:rgba(243,234,217,0.85);\n    margin:0 0 18px;\n    line-height:1.4;\n  }\n  .task-options{ display:flex; flex-direction:column; gap:10px; }\n  .task-opt{\n    background:rgba(255,130,52,0.08);\n    border:1px solid rgba(255,130,52,0.4);\n    color:var(--cream);\n    padding:11px 14px;\n    border-radius:10px;\n    font-size:14.5px;\n    text-align:left;\n    cursor:pointer;\n    transition:background .15s ease, border-color .15s ease;\n  }\n  .task-opt:hover{ background:rgba(255,130,52,0.18); }\n  .task-opt.correct{ background:rgba(163,191,111,0.25); border-color:var(--glow); }\n  .task-opt.wrong{ background:rgba(226,87,76,0.25); border-color:var(--danger); }\n\n  /* \u0412\u0435\u0440\u043d\u043e / \u043d\u0435\u0432\u0435\u0440\u043d\u043e */\n  .tf-row{ display:flex; gap:12px; }\n  .tf-btn{\n    flex:1;\n    background:rgba(255,130,52,0.08);\n    border:1px solid rgba(255,130,52,0.4);\n    color:var(--cream);\n    padding:14px; border-radius:10px;\n    font-size:15px; font-weight:700;\n    cursor:pointer;\n    transition:background .15s ease, border-color .15s ease;\n  }\n  .tf-btn:hover{ background:rgba(255,130,52,0.18); }\n  .tf-btn.correct{ background:rgba(163,191,111,0.25); border-color:var(--glow); }\n  .tf-btn.wrong{ background:rgba(226,87,76,0.25); border-color:var(--danger); }\n\n  /* \u0412\u0432\u043e\u0434 \u043e\u0442\u0432\u0435\u0442\u0430 */\n  .input-row{ display:flex; gap:10px; }\n  .input-field{\n    flex:1;\n    background:rgba(0,0,0,0.25);\n    border:1px solid rgba(255,130,52,0.4);\n    color:var(--cream);\n    padding:11px 14px; border-radius:10px;\n    font-size:14.5px;\n  }\n  .input-field:focus{ outline:none; border-color:var(--gold); }\n  .input-check-btn{\n    background:var(--gold); color:var(--ink);\n    border:none; padding:0 18px; border-radius:10px;\n    font-size:14px; font-weight:700; cursor:pointer;\n  }\n  .input-field.wrong{ border-color:var(--danger); }\n  .input-field.correct{ border-color:var(--glow); }\n  .input-feedback{ font-size:12.5px; margin-top:8px; min-height:16px; }\n  .input-feedback.wrong{ color:var(--danger); }\n  .input-feedback.correct{ color:var(--glow); }\n\n  /* \u0421\u043e\u043f\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u043f\u0430\u0440 */\n  .match-columns{ display:flex; gap:16px; }\n  .match-col{ flex:1; display:flex; flex-direction:column; gap:8px; }\n  .match-pill{\n    background:rgba(255,130,52,0.08);\n    border:1px solid rgba(255,130,52,0.4);\n    color:var(--cream);\n    padding:9px 12px; border-radius:9px;\n    font-size:13.5px; text-align:left; cursor:pointer;\n  }\n  .match-pill:hover{ background:rgba(255,130,52,0.18); }\n  .match-pill.selected{ border-color:var(--gold); background:rgba(255,130,52,0.25); }\n  .match-pill.matched{ border-color:var(--glow); background:rgba(163,191,111,0.2); cursor:default; opacity:0.85; }\n  .match-pill.wrong-flash{ border-color:var(--danger); background:rgba(226,87,76,0.25); }\n\n  /* \u0420\u0430\u0441\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e \u043f\u043e\u0440\u044f\u0434\u043a\u0443 */\n  .order-list{ display:flex; flex-direction:column; gap:8px; }\n  .order-item{\n    display:flex; align-items:center; gap:10px;\n    background:rgba(255,130,52,0.08);\n    border:1px solid rgba(255,130,52,0.4);\n    color:var(--cream);\n    padding:9px 12px; border-radius:9px;\n    font-size:13.5px;\n  }\n  .order-item .order-text{ flex:1; }\n  .order-move-btn{\n    background:none; border:1px solid rgba(255,130,52,0.5);\n    color:var(--gold-soft); width:26px; height:26px; border-radius:6px;\n    cursor:pointer; font-size:13px; line-height:1;\n  }\n  .order-move-btn:disabled{ opacity:0.3; cursor:default; }\n  .order-check-btn{\n    margin-top:14px; width:100%;\n    background:var(--gold); color:var(--ink);\n    border:none; padding:11px; border-radius:10px;\n    font-size:14px; font-weight:700; cursor:pointer;\n  }\n  .order-feedback{ font-size:12.5px; margin-top:8px; min-height:16px; }\n  .order-feedback.wrong{ color:var(--danger); }\n  .order-feedback.correct{ color:var(--glow); }\n\n  #task-close{\n    margin-top:18px;\n    background:none; border:none;\n    color:rgba(243,234,217,0.5);\n    font-size:13px; cursor:pointer;\n    text-decoration:underline;\n  }\n</style>\n</head>\n<body>\n<div id=\"app\">\n\n  <div id=\"progress-bar\">\n    <div id=\"progress-label\">__TEXT_PROGRESS_LABEL__</div>\n    <div id=\"progress-track\"><div id=\"progress-fill\"></div></div>\n    <div id=\"progress-pct\">0%</div>\n  </div>\n\n  <div id=\"location-screen\">\n    <div id=\"location-screen-title\">__TEXT_LOCATION_TITLE__</div>\n    <div id=\"location-screen-sub\">__TEXT_LOCATION_SUB__</div>\n    <div id=\"location-grid\"></div>\n  </div>\n\n  <div id=\"room\">\n    <div id=\"room-visual\">\n      <div class=\"wall-seg\"></div>\n      <div class=\"wall-seg\"></div>\n      <div class=\"wall-seg\"></div>\n    </div>\n\n    <div id=\"category-list\">\n      <div id=\"category-list-title\">__TEXT_CATEGORY_TITLE__</div>\n    </div>\n  </div>\n\n  <div id=\"tray\">\n    <div class=\"empty-note\">__TEXT_TRAY_EMPTY__</div>\n  </div>\n\n  <div id=\"task-overlay\">\n    <div id=\"task-card\">\n      <h3 id=\"task-title\">\u0417\u0430\u0434\u0430\u043d\u0438\u0435</h3>\n      <p id=\"task-question\"></p>\n      <div id=\"task-body\"></div>\n      <button id=\"task-close\">__TEXT_TASK_CLOSE__</button>\n    </div>\n  </div>\n\n</div>\n\n<script>\n(function(){\n\n  // ---------- \u041a\u043e\u043d\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044f \u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u0439 (\u0434\u0435\u043c\u043e-\u0434\u0430\u043d\u043d\u044b\u0435 \u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440\u0430) ----------\n  const categories = __CATEGORIES_JSON__;\n\n  const totalSteps = categories.length * 2;\n\n  const room = document.getElementById('room-visual');\n  const categoryList = document.getElementById('category-list');\n  const tray = document.getElementById('tray');\n  const progressFill = document.getElementById('progress-fill');\n  const progressPct = document.getElementById('progress-pct');\n\n  const overlay = document.getElementById('task-overlay');\n  const taskTitle = document.getElementById('task-title');\n  const taskQuestion = document.getElementById('task-question');\n  const taskBody = document.getElementById('task-body');\n  const taskClose = document.getElementById('task-close');\n\n  let selectedItem = null;\n  let zCounter = 10;\n  let currentTaskCat = null;\n\n  // ---------- \u041b\u043e\u043a\u0430\u0446\u0438\u0438 (\u0444\u043e\u043d\u044b \u043a\u043e\u043c\u043d\u0430\u0442\u044b) ----------\n  const locations = __LOCATIONS_JSON__;\n\n  const locationGrid = document.getElementById('location-grid');\n  const locationScreen = document.getElementById('location-screen');\n\n  function setLocation(url){\n    room.style.backgroundImage = `url('${url}')`;\n  }\n\n  locations.forEach((loc, i) => {\n    const card = document.createElement('div');\n    card.className = 'location-card';\n    card.style.backgroundImage = `url('${loc.url}')`;\n    card.innerHTML = `<div class=\"location-card-label\">\u041a\u043e\u043c\u043d\u0430\u0442\u0430 ${i + 1}</div>`;\n    card.addEventListener('click', () => {\n      setLocation(loc.url);\n      locationScreen.style.display = 'none';\n    });\n    locationGrid.appendChild(card);\n  });\n\n  // ---------- \u041e\u0442\u0440\u0438\u0441\u043e\u0432\u043a\u0430 \u0441\u043f\u0438\u0441\u043a\u0430 \u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u0439 \u0432 \u0441\u0430\u0439\u0434\u0431\u0430\u0440\u0435 \u0441\u043f\u0440\u0430\u0432\u0430 ----------\n  categories.forEach((cat) => {\n    const slot = document.createElement('div');\n    slot.className = 'lock-slot ' + (cat.active ? 'active' : 'disabled');\n    slot.dataset.catId = cat.id;\n    slot.innerHTML = `\n      <div class=\"lock-icon\">\ud83d\udd12</div>\n      <div class=\"lock-label\">${cat.label}</div>\n    `;\n    categoryList.appendChild(slot);\n\n    slot.addEventListener('click', () => {\n      if (cat.solved){\n        showCategoryTray(cat);\n        return;\n      }\n      if (!cat.active) return;\n      openTask(cat);\n    });\n  });\n\n  function openTask(cat){\n    currentTaskCat = cat;\n    const task = cat.task;\n    const type = task.type || 'quiz';\n    taskTitle.textContent = task.title;\n    taskQuestion.textContent = task.question || '';\n    taskBody.innerHTML = '';\n\n    if (type === 'quiz') renderQuizTask(task);\n    else if (type === 'truefalse') renderTrueFalseTask(task);\n    else if (type === 'input') renderInputTask(task);\n    else if (type === 'match') renderMatchTask(task);\n    else if (type === 'order') renderOrderTask(task);\n    else renderQuizTask(task);\n\n    overlay.classList.add('visible');\n  }\n\n  function completeTask(){\n    setTimeout(() => {\n      overlay.classList.remove('visible');\n      solveCategory(currentTaskCat);\n    }, 500);\n  }\n\n  // ---- \u0422\u0438\u043f: \u0442\u0435\u0441\u0442 \u0441 \u0432\u0430\u0440\u0438\u0430\u043d\u0442\u0430\u043c\u0438 ----\n  function renderQuizTask(task){\n    const wrap = document.createElement('div');\n    wrap.className = 'task-options';\n    (task.options || []).forEach(opt => {\n      const btn = document.createElement('button');\n      btn.className = 'task-opt';\n      btn.textContent = opt.text;\n      btn.addEventListener('click', () => {\n        if (opt.correct){\n          btn.classList.add('correct');\n          completeTask();\n        } else {\n          btn.classList.add('wrong');\n          setTimeout(() => btn.classList.remove('wrong'), 600);\n        }\n      });\n      wrap.appendChild(btn);\n    });\n    taskBody.appendChild(wrap);\n  }\n\n  // ---- \u0422\u0438\u043f: \u0432\u0435\u0440\u043d\u043e / \u043d\u0435\u0432\u0435\u0440\u043d\u043e ----\n  function renderTrueFalseTask(task){\n    const wrap = document.createElement('div');\n    wrap.className = 'tf-row';\n    [{label:'\u0412\u0435\u0440\u043d\u043e', val:true}, {label:'\u041d\u0435\u0432\u0435\u0440\u043d\u043e', val:false}].forEach(opt => {\n      const btn = document.createElement('button');\n      btn.className = 'tf-btn';\n      btn.textContent = opt.label;\n      btn.addEventListener('click', () => {\n        if (opt.val === !!task.answer){\n          btn.classList.add('correct');\n          completeTask();\n        } else {\n          btn.classList.add('wrong');\n          setTimeout(() => btn.classList.remove('wrong'), 600);\n        }\n      });\n      wrap.appendChild(btn);\n    });\n    taskBody.appendChild(wrap);\n  }\n\n  // ---- \u0422\u0438\u043f: \u0432\u0432\u043e\u0434 \u043e\u0442\u0432\u0435\u0442\u0430 \u0442\u0435\u043a\u0441\u0442\u043e\u043c/\u0447\u0438\u0441\u043b\u043e\u043c ----\n  function renderInputTask(task){\n    const wrap = document.createElement('div');\n    wrap.innerHTML = `\n      <div class=\"input-row\">\n        <input type=\"text\" class=\"input-field\" placeholder=\"\u0412\u0432\u0435\u0434\u0438 \u043e\u0442\u0432\u0435\u0442\">\n        <button class=\"input-check-btn\">\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c</button>\n      </div>\n      <div class=\"input-feedback\"></div>\n    `;\n    const field = wrap.querySelector('.input-field');\n    const feedback = wrap.querySelector('.input-feedback');\n    const check = () => {\n      const given = field.value.trim().toLowerCase();\n      const correct = String(task.answer || '').trim().toLowerCase();\n      if (given.length && given === correct){\n        field.classList.remove('wrong'); field.classList.add('correct');\n        feedback.textContent = '\u0412\u0435\u0440\u043d\u043e!';\n        feedback.className = 'input-feedback correct';\n        completeTask();\n      } else {\n        field.classList.remove('correct'); field.classList.add('wrong');\n        feedback.textContent = '\u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439 \u0435\u0449\u0451 \u0440\u0430\u0437';\n        feedback.className = 'input-feedback wrong';\n      }\n    };\n    wrap.querySelector('.input-check-btn').addEventListener('click', check);\n    field.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });\n    taskBody.appendChild(wrap);\n  }\n\n  // ---- \u0422\u0438\u043f: \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0435 \u043f\u0430\u0440 ----\n  function renderMatchTask(task){\n    const pairs = task.pairs || [];\n    const rightShuffled = pairs.map((p, i) => ({text:p.right, pairIndex:i}));\n    for (let i = rightShuffled.length - 1; i > 0; i--){\n      const j = Math.floor(Math.random() * (i + 1));\n      [rightShuffled[i], rightShuffled[j]] = [rightShuffled[j], rightShuffled[i]];\n    }\n\n    const wrap = document.createElement('div');\n    wrap.className = 'match-columns';\n    const leftCol = document.createElement('div');\n    leftCol.className = 'match-col';\n    const rightCol = document.createElement('div');\n    rightCol.className = 'match-col';\n\n    let selectedLeft = null;\n    let selectedRight = null;\n    let matchedCount = 0;\n\n    pairs.forEach((p, i) => {\n      const pill = document.createElement('button');\n      pill.className = 'match-pill';\n      pill.textContent = p.left;\n      pill.dataset.pairIndex = i;\n      pill.addEventListener('click', () => {\n        if (pill.classList.contains('matched')) return;\n        leftCol.querySelectorAll('.match-pill').forEach(el => el.classList.remove('selected'));\n        pill.classList.add('selected');\n        selectedLeft = pill;\n        tryMatch();\n      });\n      leftCol.appendChild(pill);\n    });\n\n    rightShuffled.forEach(r => {\n      const pill = document.createElement('button');\n      pill.className = 'match-pill';\n      pill.textContent = r.text;\n      pill.dataset.pairIndex = r.pairIndex;\n      pill.addEventListener('click', () => {\n        if (pill.classList.contains('matched')) return;\n        rightCol.querySelectorAll('.match-pill').forEach(el => el.classList.remove('selected'));\n        pill.classList.add('selected');\n        selectedRight = pill;\n        tryMatch();\n      });\n      rightCol.appendChild(pill);\n    });\n\n    function tryMatch(){\n      if (!selectedLeft || !selectedRight) return;\n      if (selectedLeft.dataset.pairIndex === selectedRight.dataset.pairIndex){\n        selectedLeft.classList.add('matched');\n        selectedRight.classList.add('matched');\n        selectedLeft.classList.remove('selected');\n        selectedRight.classList.remove('selected');\n        matchedCount++;\n        selectedLeft = null; selectedRight = null;\n        if (matchedCount === pairs.length) completeTask();\n      } else {\n        selectedLeft.classList.add('wrong-flash');\n        selectedRight.classList.add('wrong-flash');\n        setTimeout(() => {\n          selectedLeft.classList.remove('selected', 'wrong-flash');\n          selectedRight.classList.remove('selected', 'wrong-flash');\n          selectedLeft = null; selectedRight = null;\n        }, 500);\n      }\n    }\n\n    wrap.appendChild(leftCol);\n    wrap.appendChild(rightCol);\n    taskBody.appendChild(wrap);\n  }\n\n  // ---- \u0422\u0438\u043f: \u0440\u0430\u0441\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e \u043f\u043e\u0440\u044f\u0434\u043a\u0443 ----\n  function renderOrderTask(task){\n    let current = (task.items || []).slice();\n    for (let i = current.length - 1; i > 0; i--){\n      const j = Math.floor(Math.random() * (i + 1));\n      [current[i], current[j]] = [current[j], current[i]];\n    }\n\n    const wrap = document.createElement('div');\n    const list = document.createElement('div');\n    list.className = 'order-list';\n    const feedback = document.createElement('div');\n    feedback.className = 'order-feedback';\n\n    function render(){\n      list.innerHTML = '';\n      current.forEach((text, i) => {\n        const row = document.createElement('div');\n        row.className = 'order-item';\n        row.innerHTML = `\n          <button class=\"order-move-btn\" data-dir=\"up\" ${i === 0 ? 'disabled' : ''}>\u2191</button>\n          <button class=\"order-move-btn\" data-dir=\"down\" ${i === current.length - 1 ? 'disabled' : ''}>\u2193</button>\n          <div class=\"order-text\">${text}</div>\n        `;\n        row.querySelector('[data-dir=\"up\"]').addEventListener('click', () => {\n          [current[i-1], current[i]] = [current[i], current[i-1]];\n          render();\n        });\n        row.querySelector('[data-dir=\"down\"]').addEventListener('click', () => {\n          [current[i], current[i+1]] = [current[i+1], current[i]];\n          render();\n        });\n        list.appendChild(row);\n      });\n    }\n    render();\n\n    const checkBtn = document.createElement('button');\n    checkBtn.className = 'order-check-btn';\n    checkBtn.textContent = '\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043e\u0440\u044f\u0434\u043e\u043a';\n    checkBtn.addEventListener('click', () => {\n      const correct = (task.items || []).every((t, i) => t === current[i]);\n      if (correct){\n        feedback.textContent = '\u0412\u0435\u0440\u043d\u043e!';\n        feedback.className = 'order-feedback correct';\n        completeTask();\n      } else {\n        feedback.textContent = '\u041f\u043e\u043a\u0430 \u043d\u0435 \u0442\u0430\u043a, \u043f\u043e\u043f\u0440\u043e\u0431\u0443\u0439 \u0435\u0449\u0451 \u0440\u0430\u0437';\n        feedback.className = 'order-feedback wrong';\n      }\n    });\n\n    wrap.appendChild(list);\n    wrap.appendChild(checkBtn);\n    wrap.appendChild(feedback);\n    taskBody.appendChild(wrap);\n  }\n\n  taskClose.addEventListener('click', () => overlay.classList.remove('visible'));\n\n  function solveCategory(cat){\n    cat.solved = true;\n    const slot = document.querySelector(`.lock-slot[data-cat-id=\"${cat.id}\"]`);\n    slot.classList.remove('active');\n    slot.classList.add('solved');\n    slot.querySelector('.lock-icon').textContent = '\ud83d\udd13';\n\n    showCategoryTray(cat);\n    updateProgress();\n  }\n\n  function showCategoryTray(cat){\n    // \u041f\u043e\u0434\u0441\u0432\u0435\u0442\u043a\u0430 \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0439 \u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u0438 \u0432 \u0441\u043f\u0438\u0441\u043a\u0435\n    document.querySelectorAll('.lock-slot').forEach(s => s.classList.remove('viewing'));\n    const slot = document.querySelector(`.lock-slot[data-cat-id=\"${cat.id}\"]`);\n    if (slot) slot.classList.add('viewing');\n\n    // \u041b\u043e\u0442\u043e\u043a \u043f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442 \u043f\u0440\u0435\u0434\u043c\u0435\u0442\u044b \u0442\u043e\u043b\u044c\u043a\u043e \u043e\u0434\u043d\u043e\u0439 \u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u0438 \u0437\u0430 \u0440\u0430\u0437\n    tray.innerHTML = '';\n\n    const group = document.createElement('div');\n    group.className = 'tray-group';\n    group.dataset.catId = cat.id;\n    group.innerHTML = `\n      <div class=\"tray-group-label\">${cat.label}</div>\n      <div class=\"tray-group-items\"></div>\n    `;\n    tray.appendChild(group);\n    const groupItems = group.querySelector('.tray-group-items');\n\n    cat.items.forEach(item => {\n      const el = document.createElement('div');\n      el.className = 'tray-item';\n      if (item.img){\n        el.innerHTML = `<img src=\"${item.img}\" alt=\"\">`;\n      } else {\n        el.textContent = item.glyph;\n      }\n      el.draggable = true;\n      el.addEventListener('dragstart', (e) => {\n        e.dataTransfer.setData('text/plain', JSON.stringify({\n          glyph: item.glyph || null,\n          img: item.img || null,\n          baseSize: item.baseSize || null,\n          catId: cat.id\n        }));\n        el.classList.add('dragging');\n      });\n      el.addEventListener('dragend', () => el.classList.remove('dragging'));\n      groupItems.appendChild(el);\n    });\n\n    updateProgress();\n  }\n\n  // ---------- Drag & drop \u043f\u0440\u0435\u0434\u043c\u0435\u0442\u043e\u0432 \u0432 \u043a\u043e\u043c\u043d\u0430\u0442\u0443 ----------\n  room.addEventListener('dragover', (e) => e.preventDefault());\n  room.addEventListener('drop', (e) => {\n    e.preventDefault();\n    const raw = e.dataTransfer.getData('text/plain');\n    if (!raw) return;\n    let data;\n    try { data = JSON.parse(raw); } catch (err) { data = { glyph: raw }; }\n    const rect = room.getBoundingClientRect();\n    const x = e.clientX - rect.left;\n    const y = e.clientY - rect.top;\n    placeItem(data, x, y);\n  });\n\n  function placeItem(data, x, y){\n    const baseSize = data.baseSize || 64;\n    const el = document.createElement('div');\n    el.className = 'placed-item';\n    el.style.width = baseSize + 'px';\n    el.style.height = baseSize + 'px';\n    el.style.left = (x - baseSize / 2) + 'px';\n    el.style.top = (y - baseSize / 2) + 'px';\n    el.dataset.cx = x;\n    el.dataset.cy = y;\n    el.dataset.scale = 1;\n    el.dataset.rot = 0;\n    el.dataset.flipx = 1;\n    el.dataset.flipy = 1;\n    el.dataset.base = baseSize;\n\n    const visualInner = data.img\n      ? `<img src=\"${data.img}\" alt=\"\">`\n      : `<div class=\"glyph\">${data.glyph}</div>`;\n\n    el.innerHTML = `\n      <button class=\"item-delete\" title=\"\u0423\u0431\u0440\u0430\u0442\u044c\">\u00d7</button>\n      <button class=\"item-flip item-flip-h\" title=\"\u041e\u0442\u0440\u0430\u0437\u0438\u0442\u044c \u043f\u043e \u0433\u043e\u0440\u0438\u0437\u043e\u043d\u0442\u0430\u043b\u0438\">\u21cb</button>\n      <button class=\"item-flip item-flip-v\" title=\"\u041e\u0442\u0440\u0430\u0437\u0438\u0442\u044c \u043f\u043e \u0432\u0435\u0440\u0442\u0438\u043a\u0430\u043b\u0438\">\u21f5</button>\n      <div class=\"item-visual\">\n        ${visualInner}\n        <div class=\"item-handle\" title=\"\u0422\u044f\u043d\u0438: \u0443\u0432\u0435\u043b\u0438\u0447\u0438\u0442\u044c \u0438 \u043f\u043e\u0432\u0435\u0440\u043d\u0443\u0442\u044c\"></div>\n      </div>\n    `;\n    room.appendChild(el);\n    setupItemInteractions(el);\n    selectItem(el);\n\n    // \u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u044f \u0434\u0430\u0451\u0442 \u0431\u0430\u043b\u043b \u0437\u0430 \u0440\u0430\u0437\u043c\u0435\u0449\u0435\u043d\u0438\u0435 \u0442\u043e\u043b\u044c\u043a\u043e \u043e\u0434\u0438\u043d \u0440\u0430\u0437 \u2014\n    // \u043f\u043e\u0432\u0442\u043e\u0440\u043d\u044b\u0435 \u043f\u0440\u0435\u0434\u043c\u0435\u0442\u044b \u0438\u0437 \u0442\u043e\u0439 \u0436\u0435 \u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u0438 \u0443\u0436\u0435 \u043d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u0434\u043e\u0431\u0430\u0432\u043b\u044f\u044e\u0442\n    if (data.catId){\n      const cat = categories.find(c => c.id === data.catId);\n      if (cat && !cat.placed){\n        cat.placed = true;\n      }\n    }\n    updateProgress();\n  }\n\n  function applyTransform(el){\n    const visual = el.querySelector('.item-visual');\n    const scale = el.dataset.scale;\n    const flipX = el.dataset.flipx;\n    const flipY = el.dataset.flipy;\n    visual.style.transform = `rotate(${el.dataset.rot}deg) scale(${scale * flipX}, ${scale * flipY})`;\n  }\n\n  function setupItemInteractions(el){\n    const visual = el.querySelector('.item-visual');\n    const handle = el.querySelector('.item-handle');\n    const delBtn = el.querySelector('.item-delete');\n    const flipHBtn = el.querySelector('.item-flip-h');\n    const flipVBtn = el.querySelector('.item-flip-v');\n\n    flipHBtn.addEventListener('click', (e) => {\n      e.stopPropagation();\n      el.dataset.flipx = parseFloat(el.dataset.flipx) * -1;\n      applyTransform(el);\n    });\n    flipVBtn.addEventListener('click', (e) => {\n      e.stopPropagation();\n      el.dataset.flipy = parseFloat(el.dataset.flipy) * -1;\n      applyTransform(el);\n    });\n\n    // ---- \u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0435 (\u0442\u044f\u043d\u0435\u043c \u0442\u0435\u043b\u043e \u043f\u0440\u0435\u0434\u043c\u0435\u0442\u0430) ----\n    let moving = false, startPX = 0, startPY = 0, startCX = 0, startCY = 0;\n\n    visual.addEventListener('pointerdown', (e) => {\n      e.stopPropagation();\n      selectItem(el);\n      moving = true;\n      visual.setPointerCapture(e.pointerId);\n      startPX = e.clientX; startPY = e.clientY;\n      startCX = parseFloat(el.dataset.cx);\n      startCY = parseFloat(el.dataset.cy);\n    });\n    visual.addEventListener('pointermove', (e) => {\n      if (!moving) return;\n      const dx = e.clientX - startPX;\n      const dy = e.clientY - startPY;\n      const nx = startCX + dx, ny = startCY + dy;\n      el.dataset.cx = nx; el.dataset.cy = ny;\n      const base = parseFloat(el.dataset.base);\n      el.style.left = (nx - base / 2) + 'px';\n      el.style.top = (ny - base / 2) + 'px';\n    });\n    visual.addEventListener('pointerup', () => moving = false);\n    visual.addEventListener('pointercancel', () => moving = false);\n\n    // ---- \u042f\u043a\u043e\u0440\u044c: \u0442\u044f\u043d\u0435\u043c \u2014 \u0440\u0430\u0441\u0442\u0451\u0442 \u0438 \u0432\u0440\u0430\u0449\u0430\u0435\u0442\u0441\u044f \u0432\u043e\u043a\u0440\u0443\u0433 \u0446\u0435\u043d\u0442\u0440\u0430 \u043f\u0440\u0435\u0434\u043c\u0435\u0442\u0430 ----\n    let handling = false;\n    handle.addEventListener('pointerdown', (e) => {\n      e.stopPropagation();\n      selectItem(el);\n      handling = true;\n      handle.setPointerCapture(e.pointerId);\n    });\n    handle.addEventListener('pointermove', (e) => {\n      if (!handling) return;\n      const roomRect = room.getBoundingClientRect();\n      const cx = parseFloat(el.dataset.cx);\n      const cy = parseFloat(el.dataset.cy);\n      const px = e.clientX - roomRect.left;\n      const py = e.clientY - roomRect.top;\n      const dx = px - cx, dy = py - cy;\n\n      const angle = Math.atan2(dy, dx) * 180 / Math.PI;\n      const rot = angle - 45; // \u044f\u043a\u043e\u0440\u044c \u0441\u0442\u043e\u0438\u0442 \u0432 \u0443\u0433\u043b\u0443 \u043f\u043e\u0434 45\u00b0, \u044d\u0442\u043e \u043d\u0443\u043b\u0435\u0432\u0430\u044f \u0442\u043e\u0447\u043a\u0430 \u043f\u043e\u0432\u043e\u0440\u043e\u0442\u0430\n\n      const dist = Math.sqrt(dx * dx + dy * dy);\n      const base = parseFloat(el.dataset.base);\n      const baseDist = (base / 2) * Math.SQRT2;\n      let scale = dist / baseDist;\n      scale = Math.max(0.35, Math.min(4, scale));\n\n      el.dataset.rot = rot;\n      el.dataset.scale = scale;\n      applyTransform(el);\n    });\n    handle.addEventListener('pointerup', () => handling = false);\n    handle.addEventListener('pointercancel', () => handling = false);\n\n    // ---- \u0423\u0434\u0430\u043b\u0435\u043d\u0438\u0435 ----\n    delBtn.addEventListener('click', (e) => {\n      e.stopPropagation();\n      el.remove();\n      if (selectedItem === el) selectedItem = null;\n      updateProgress();\n    });\n  }\n\n  function selectItem(el){\n    if (selectedItem) selectedItem.classList.remove('selected');\n    selectedItem = el;\n    el.classList.add('selected');\n    zCounter++;\n    el.style.zIndex = zCounter;\n  }\n\n  room.addEventListener('pointerdown', (e) => {\n    if (e.target === room || e.target.classList.contains('wall-seg')){\n      if (selectedItem){\n        selectedItem.classList.remove('selected');\n        selectedItem = null;\n      }\n    }\n  });\n\n  // ---------- \u041f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 ----------\n  function updateProgress(){\n    const done = categories.reduce((sum, c) => {\n      return sum + (c.solved ? 1 : 0) + (c.placed ? 1 : 0);\n    }, 0);\n    const pct = Math.min(100, Math.round((done / totalSteps) * 100));\n    progressFill.style.width = pct + '%';\n    progressPct.textContent = pct + '%';\n  }\n\n})();\n<\/script>\n</body>\n</html>\n";
+  const FONT_PRESETS = [
+    {
+      id:'cormorant',
+      label:'Cormorant Garamond + Nunito Sans (текущий, элегантный)',
+      link:'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap',
+      display:"'Cormorant Garamond', serif",
+      body:"'Nunito Sans', sans-serif"
+    },
+    {
+      id:'playfair',
+      label:'Playfair Display + Inter (строгий, современный)',
+      link:'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;600;700&display=swap',
+      display:"'Playfair Display', serif",
+      body:"'Inter', sans-serif"
+    },
+    {
+      id:'fredoka',
+      label:'Fredoka + Nunito Sans (игривый, для младших классов)',
+      link:'https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap',
+      display:"'Fredoka', sans-serif",
+      body:"'Nunito Sans', sans-serif"
+    },
+    {
+      id:'merriweather',
+      label:'Merriweather + Source Sans 3 (классический)',
+      link:'https://fonts.googleapis.com/css2?family=Merriweather:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap',
+      display:"'Merriweather', serif",
+      body:"'Source Sans 3', sans-serif"
+    }
+  ];
+
+  const LANG_OPTIONS = [
+    {id:'ru', label:'Русский'},
+    {id:'en', label:'English'},
+    {id:'uk', label:'Українська'}
+  ];
+
+  const state = {
+    locations: /*__INITIAL_LOCATIONS__*/[{"id": "room1", "url": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/f2.png?raw=true"}, {"id": "room2", "url": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/f4.png?raw=true"}, {"id": "room3", "url": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/f5.png?raw=true"}, {"id": "room4", "url": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/%D0%BC%20(93).png?raw=true"}, {"id": "room5", "url": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/%D0%BC%20(95).png?raw=true"}],
+    categories: /*__INITIAL_CATEGORIES__*/[{"id": "table", "label": "Столик", "solved": false, "active": true, "task": {"title": "Столик", "question": "Сколько будет 6 × 4?", "options": [{"text": "20", "correct": false}, {"text": "24", "correct": true}, {"text": "18", "correct": false}], "type": "quiz"}, "items": [{"id": "table1", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/s1.png?raw=true", "baseSize": 130}, {"id": "table2", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/s2.png?raw=true", "baseSize": 130}, {"id": "table3", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/s3.png?raw=true", "baseSize": 130}, {"id": "table4", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/s4.png?raw=true", "baseSize": 130}, {"id": "table5", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/s5.png?raw=true", "baseSize": 130}]}, {"id": "armchair", "label": "Кресло", "solved": false, "active": true, "task": {"title": "Кресло", "question": "Сколько будет 7 × 3?", "options": [{"text": "21", "correct": true}, {"text": "18", "correct": false}, {"text": "24", "correct": false}], "type": "quiz"}, "items": [{"id": "armchair1", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/d1.png?raw=true", "baseSize": 140}, {"id": "armchair2", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/d2.png?raw=true", "baseSize": 140}, {"id": "armchair3", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/d3.png?raw=true", "baseSize": 140}, {"id": "armchair4", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/d4.png?raw=true", "baseSize": 140}, {"id": "armchair5", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/d5.png?raw=true", "baseSize": 140}]}, {"id": "decor", "label": "Декорации", "solved": false, "active": true, "task": {"title": "Декорации", "question": "Сколько будет 40 − 16?", "options": [{"text": "24", "correct": true}, {"text": "26", "correct": false}, {"text": "22", "correct": false}], "type": "quiz"}, "items": [{"id": "decor1", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/dic1.png?raw=true", "baseSize": 90}, {"id": "decor2", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/dic2.png?raw=true", "baseSize": 90}, {"id": "decor3", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/dic3.png?raw=true", "baseSize": 90}, {"id": "decor4", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/dic4.png?raw=true", "baseSize": 90}, {"id": "decor5", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/dic5.png?raw=true", "baseSize": 90}]}, {"id": "items", "label": "Предметы", "solved": false, "active": true, "task": {"title": "Предметы", "question": "Сколько будет 9 × 5?", "options": [{"text": "45", "correct": true}, {"text": "40", "correct": false}, {"text": "54", "correct": false}], "type": "quiz"}, "items": [{"id": "items1", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr1.png?raw=true", "baseSize": 90}, {"id": "items2", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr2.png?raw=true", "baseSize": 90}, {"id": "items3", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr3.png?raw=true", "baseSize": 90}, {"id": "items4", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr7.png?raw=true", "baseSize": 90}, {"id": "items5", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr5.png?raw=true", "baseSize": 90}, {"id": "items6", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr6.png?raw=true", "baseSize": 90}]}, {"id": "paintings", "label": "Картины", "solved": false, "active": true, "task": {"title": "Картины", "question": "Какое число идёт следующим: 2, 4, 6, 8, ...?", "options": [{"text": "9", "correct": false}, {"text": "10", "correct": true}, {"text": "12", "correct": false}], "type": "quiz"}, "items": [{"id": "painting1", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/k1.png?raw=true", "baseSize": 110}, {"id": "painting2", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/k2.png?raw=true", "baseSize": 110}, {"id": "painting3", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/k3.png?raw=true", "baseSize": 110}, {"id": "painting5", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/k5.png?raw=true", "baseSize": 110}, {"id": "painting6", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/k6.png?raw=true", "baseSize": 110}]}, {"id": "sofa", "label": "Диван", "solved": false, "active": true, "task": {"title": "Диван", "question": "Сколько будет 15 + 9?", "options": [{"text": "23", "correct": false}, {"text": "24", "correct": true}, {"text": "25", "correct": false}], "type": "quiz"}, "items": [{"id": "sofa1", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/kr1.png?raw=true", "baseSize": 140}, {"id": "sofa2", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/kr2.png?raw=true", "baseSize": 140}, {"id": "sofa3", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/kr3.png?raw=true", "baseSize": 140}, {"id": "sofa4", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/kr4.png?raw=true", "baseSize": 140}, {"id": "sofa5", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/kr5.png?raw=true", "baseSize": 140}]}, {"id": "cabinet", "label": "Шкаф", "solved": false, "active": true, "task": {"title": "Шкаф", "question": "Раздели 36 на 4.", "options": [{"text": "8", "correct": false}, {"text": "9", "correct": true}, {"text": "6", "correct": false}], "type": "quiz"}, "items": [{"id": "cabinet2", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/cab1.png?raw=true", "baseSize": 130}, {"id": "cabinet3", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/%D1%81ab2.png?raw=true", "baseSize": 130}, {"id": "cabinet4", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/cub3.png?raw=true", "baseSize": 130}, {"id": "cabinet5", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/cub4.png?raw=true", "baseSize": 130}, {"id": "cabinet6", "img": "https://github.com/nastyaiv3100-cyber/Pic/blob/main/cub5.png?raw=true", "baseSize": 130}]}],
+    design: {
+      gold: '#ff8234',
+      goldSoft: '#ffcf9e',
+      glow: '#a3bf6f',
+      danger: '#e2574c'
+    },
+    text: {
+      progressLabel: 'Готовность комнаты',
+      categoryTitle: 'Категории',
+      locationTitle: 'Выбери комнату',
+      locationSub: 'Потом сможешь расставить в ней предметы',
+      trayEmpty: 'Реши задания, чтобы получить предметы',
+      taskClose: 'Закрыть'
+    },
+    fontPreset: 'cormorant',
+    lang: 'ru',
+    activeTab: 'locations'
+  };
+
+  function uid(prefix){
+    return prefix + '-' + Math.random().toString(36).slice(2, 9);
+  }
+  function escapeHtml(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function escapeAttr(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  }
+
+  // ---------- Живое превью ----------
+  const previewFrame = document.getElementById('preview-frame');
+  const previewFrameWrap = document.getElementById('preview-frame-wrap');
+
+  function sizePreviewFrame(){
+    const rect = previewFrameWrap.getBoundingClientRect();
+    const available = window.innerHeight - rect.top - 24;
+    previewFrame.style.height = Math.max(480, Math.round(available)) + 'px';
+  }
+  window.addEventListener('resize', sizePreviewFrame);
+  const previewStatus = document.getElementById('preview-status');
+  let previewTimer = null;
+
+  function getFontPreset(){
+    return FONT_PRESETS.find(f => f.id === state.fontPreset) || FONT_PRESETS[0];
+  }
+
+  function generateHTML(){
+    const preset = getFontPreset();
+    return ENGINE_TEMPLATE
+      .split('__CATEGORIES_JSON__').join(JSON.stringify(state.categories))
+      .split('__LOCATIONS_JSON__').join(JSON.stringify(state.locations))
+      .split('__LANG__').join(state.lang)
+      .split('__FONT_LINK__').join(preset.link)
+      .split('__FONT_DISPLAY__').join(preset.display)
+      .split('__FONT_BODY__').join(preset.body)
+      .split('__COLOR_GOLD__').join(state.design.gold)
+      .split('__COLOR_GOLD_SOFT__').join(state.design.goldSoft)
+      .split('__COLOR_GLOW__').join(state.design.glow)
+      .split('__COLOR_DANGER__').join(state.design.danger)
+      .split('__TEXT_PROGRESS_LABEL__').join(escapeHtml(state.text.progressLabel))
+      .split('__TEXT_CATEGORY_TITLE__').join(escapeHtml(state.text.categoryTitle))
+      .split('__TEXT_LOCATION_TITLE__').join(escapeHtml(state.text.locationTitle))
+      .split('__TEXT_LOCATION_SUB__').join(escapeHtml(state.text.locationSub))
+      .split('__TEXT_TRAY_EMPTY__').join(escapeHtml(state.text.trayEmpty))
+      .split('__TEXT_TASK_CLOSE__').join(escapeHtml(state.text.taskClose));
+  }
+
+  function updatePreviewNow(){
+    previewFrame.srcdoc = generateHTML();
+    previewStatus.textContent = 'обновлено';
+    setTimeout(() => { previewStatus.textContent = 'обновляется вживую'; }, 700);
+  }
+  function schedulePreview(){
+    previewStatus.textContent = 'обновляю...';
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(updatePreviewNow, 500);
+  }
+
+  // ---------- Вкладки ----------
+  const TABS = [
+    {id:'locations', label:'Локации'},
+    {id:'tasks', label:'Задания'},
+    {id:'text', label:'Текст'},
+    {id:'textEditor', label:'Редактор текста'},
+    {id:'design', label:'Дизайн'},
+    {id:'export', label:'Экспорт'}
+  ];
+
+  const tabsBar = document.getElementById('tabs-bar');
+  const tabContent = document.getElementById('tab-content');
+
+  function renderTabsBar(){
+    tabsBar.innerHTML = '';
+    TABS.forEach(t => {
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn' + (state.activeTab === t.id ? ' active' : '');
+      btn.textContent = t.label;
+      btn.addEventListener('click', () => {
+        state.activeTab = t.id;
+        renderTabsBar();
+        renderTabContent();
+      });
+      tabsBar.appendChild(btn);
+    });
+  }
+
+  function renderTabContent(){
+    tabContent.innerHTML = '';
+    if (state.activeTab === 'locations') renderLocationsTab();
+    else if (state.activeTab === 'tasks') renderTasksTab();
+    else if (state.activeTab === 'text') renderTextTab();
+    else if (state.activeTab === 'textEditor') renderTextEditorTab();
+    else if (state.activeTab === 'design') renderDesignTab();
+    else if (state.activeTab === 'export') renderExportTab();
+  }
+
+  // ---------- Вкладка: Локации ----------
+  function renderLocationsTab(){
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="section-title">
+        <h2>Локации (фоны комнаты)</h2>
+        <button class="add-btn" id="add-location-btn">+ Добавить локацию</button>
+      </div>
+      <div class="section-hint">Это главный экран игры — ученик выбирает одну из этих комнат в начале.</div>
+      <div id="locations-list"></div>
+    `;
+    tabContent.appendChild(wrap);
+
+    const locationsList = wrap.querySelector('#locations-list');
+
+    function renderList(){
+      locationsList.innerHTML = '';
+      state.locations.forEach((loc) => {
+        const row = document.createElement('div');
+        row.className = 'location-row';
+        row.innerHTML = `
+          <div class="location-thumb" style="background-image:url('${loc.url}')"></div>
+          <input type="text" value="${loc.url.replace(/"/g,'&quot;')}" placeholder="Ссылка на картинку">
+          <button class="remove-btn" title="Удалить">×</button>
+        `;
+        const input = row.querySelector('input');
+        const thumb = row.querySelector('.location-thumb');
+        input.addEventListener('input', () => {
+          loc.url = input.value;
+          thumb.style.backgroundImage = `url('${input.value}')`;
+          schedulePreview();
+        });
+        row.querySelector('.remove-btn').addEventListener('click', () => {
+          state.locations = state.locations.filter(l => l !== loc);
+          renderList();
+          schedulePreview();
+        });
+        locationsList.appendChild(row);
+      });
+    }
+    renderList();
+
+    wrap.querySelector('#add-location-btn').addEventListener('click', () => {
+      state.locations.push({id: uid('room'), url: ''});
+      renderList();
+      schedulePreview();
+    });
+  }
+
+  // ---------- Вкладка: Задания (категории) ----------
+  function ensureTaskDefaults(cat){
+    const type = cat.task.type || 'quiz';
+    cat.task.type = type;
+    if (type === 'quiz'){
+      if (!cat.task.options) cat.task.options = [];
+      while (cat.task.options.length < 3){
+        cat.task.options.push({text:'', correct: cat.task.options.length === 0});
+      }
+    } else if (type === 'truefalse'){
+      if (typeof cat.task.answer !== 'boolean') cat.task.answer = true;
+    } else if (type === 'input'){
+      if (typeof cat.task.answer !== 'string') cat.task.answer = '';
+    } else if (type === 'match'){
+      if (!cat.task.pairs || !cat.task.pairs.length){
+        cat.task.pairs = [{left:'', right:''}, {left:'', right:''}, {left:'', right:''}];
+      }
+    } else if (type === 'order'){
+      if (!cat.task.items || !cat.task.items.length){
+        cat.task.items = ['', '', ''];
+      }
+    }
+  }
+
+  const TASK_TYPE_LABELS = {
+    quiz: 'Тест с вариантами',
+    truefalse: 'Верно / неверно',
+    input: 'Ввод ответа',
+    match: 'Соединение пар',
+    order: 'Расставить по порядку'
+  };
+
+  function buildTaskSection(cat, taskDiv){
+    ensureTaskDefaults(cat);
+    const type = cat.task.type;
+
+    taskDiv.innerHTML = `
+      <span class="field-label">Тип задания</span>
+      <select class="cat-type-select">
+        ${Object.keys(TASK_TYPE_LABELS).map(t => `<option value="${t}" ${t===type?'selected':''}>${TASK_TYPE_LABELS[t]}</option>`).join('')}
+      </select>
+      <span class="field-label" style="margin-top:12px;">Вопрос / инструкция</span>
+      <input type="text" class="cat-question" value="${escapeAttr(cat.task.question||'')}" placeholder="Например: Сколько будет 6 × 4?">
+      <div class="cat-type-fields"></div>
+    `;
+
+    taskDiv.querySelector('.cat-type-select').addEventListener('change', (e) => {
+      cat.task.type = e.target.value;
+      buildTaskSection(cat, taskDiv);
+      schedulePreview();
+    });
+    taskDiv.querySelector('.cat-question').addEventListener('input', (e) => {
+      cat.task.question = e.target.value;
+      schedulePreview();
+    });
+
+    const fieldsWrap = taskDiv.querySelector('.cat-type-fields');
+    if (type === 'quiz') buildQuizFields(cat, fieldsWrap);
+    else if (type === 'truefalse') buildTrueFalseFields(cat, fieldsWrap);
+    else if (type === 'input') buildInputFields(cat, fieldsWrap);
+    else if (type === 'match') buildMatchFields(cat, fieldsWrap);
+    else if (type === 'order') buildOrderFields(cat, fieldsWrap);
+  }
+
+  function buildQuizFields(cat, wrap){
+    const optionsHtml = cat.task.options.map((opt, i) => `
+      <div class="option-row">
+        <input type="radio" name="${cat.id}-correct" ${opt.correct ? 'checked' : ''} data-opt-index="${i}">
+        <input type="text" value="${escapeAttr(opt.text)}" placeholder="Вариант ответа" data-opt-text-index="${i}">
+      </div>
+    `).join('');
+    wrap.innerHTML = `
+      <span class="field-label">Варианты ответа (отметь точкой правильный)</span>
+      <div class="cat-options">${optionsHtml}</div>
+      <div class="option-hint">Кружком слева отмечается правильный вариант</div>
+    `;
+    wrap.querySelectorAll('.option-row input[type="radio"]').forEach((radio) => {
+      radio.addEventListener('change', () => {
+        const idx = parseInt(radio.dataset.optIndex, 10);
+        cat.task.options.forEach((o, i) => o.correct = (i === idx));
+        schedulePreview();
+      });
+    });
+    wrap.querySelectorAll('.option-row input[type="text"]').forEach((inp) => {
+      inp.addEventListener('input', () => {
+        const idx = parseInt(inp.dataset.optTextIndex, 10);
+        cat.task.options[idx].text = inp.value;
+        schedulePreview();
+      });
+    });
+  }
+
+  function buildTrueFalseFields(cat, wrap){
+    wrap.innerHTML = `
+      <span class="field-label">Правильный ответ</span>
+      <div class="option-row">
+        <input type="radio" name="${cat.id}-tf" ${cat.task.answer === true ? 'checked' : ''} data-tf="true">
+        <span style="flex:1;">Верно</span>
+      </div>
+      <div class="option-row">
+        <input type="radio" name="${cat.id}-tf" ${cat.task.answer === false ? 'checked' : ''} data-tf="false">
+        <span style="flex:1;">Неверно</span>
+      </div>
+    `;
+    wrap.querySelectorAll('input[type="radio"]').forEach((radio) => {
+      radio.addEventListener('change', () => {
+        cat.task.answer = radio.dataset.tf === 'true';
+        schedulePreview();
+      });
+    });
+  }
+
+  function buildInputFields(cat, wrap){
+    wrap.innerHTML = `
+      <span class="field-label">Правильный ответ (текст или число)</span>
+      <input type="text" class="cat-input-answer" value="${escapeAttr(cat.task.answer || '')}" placeholder="Например: 24">
+      <div class="option-hint">Ответ проверяется без учёта регистра и лишних пробелов</div>
+    `;
+    wrap.querySelector('.cat-input-answer').addEventListener('input', (e) => {
+      cat.task.answer = e.target.value;
+      schedulePreview();
+    });
+  }
+
+  function buildMatchFields(cat, wrap){
+    function renderPairs(){
+      const rowsHtml = cat.task.pairs.map((p, i) => `
+        <div class="item-row" data-pair-index="${i}">
+          <input type="text" value="${escapeAttr(p.left)}" placeholder="Слева" class="pair-left">
+          <input type="text" value="${escapeAttr(p.right)}" placeholder="Справа" class="pair-right">
+          <button class="remove-btn" title="Удалить пару">×</button>
+        </div>
+      `).join('');
+      wrap.innerHTML = `
+        <span class="field-label">Пары для соединения</span>
+        <div class="pairs-list">${rowsHtml}</div>
+        <button class="add-item-btn add-pair-btn">+ Добавить пару</button>
+      `;
+      wrap.querySelectorAll('.item-row').forEach((row) => {
+        const idx = parseInt(row.dataset.pairIndex, 10);
+        row.querySelector('.pair-left').addEventListener('input', (e) => {
+          cat.task.pairs[idx].left = e.target.value; schedulePreview();
+        });
+        row.querySelector('.pair-right').addEventListener('input', (e) => {
+          cat.task.pairs[idx].right = e.target.value; schedulePreview();
+        });
+        row.querySelector('.remove-btn').addEventListener('click', () => {
+          cat.task.pairs.splice(idx, 1);
+          renderPairs(); schedulePreview();
+        });
+      });
+      wrap.querySelector('.add-pair-btn').addEventListener('click', () => {
+        cat.task.pairs.push({left:'', right:''});
+        renderPairs(); schedulePreview();
+      });
+    }
+    renderPairs();
+  }
+
+  function buildOrderFields(cat, wrap){
+    function renderItems(){
+      const rowsHtml = cat.task.items.map((val, i) => `
+        <div class="item-row" data-item-index="${i}">
+          <input type="text" value="${escapeAttr(val)}" placeholder="Шаг ${i+1}" class="order-edit-input">
+          <button class="remove-btn" title="Удалить">×</button>
+        </div>
+      `).join('');
+      wrap.innerHTML = `
+        <span class="field-label">Правильный порядок (сверху вниз)</span>
+        <div class="order-edit-list">${rowsHtml}</div>
+        <button class="add-item-btn add-order-btn">+ Добавить шаг</button>
+        <div class="option-hint">При показе ученику пункты перемешиваются случайно</div>
+      `;
+      wrap.querySelectorAll('.item-row').forEach((row) => {
+        const idx = parseInt(row.dataset.itemIndex, 10);
+        row.querySelector('.order-edit-input').addEventListener('input', (e) => {
+          cat.task.items[idx] = e.target.value; schedulePreview();
+        });
+        row.querySelector('.remove-btn').addEventListener('click', () => {
+          cat.task.items.splice(idx, 1);
+          renderItems(); schedulePreview();
+        });
+      });
+      wrap.querySelector('.add-order-btn').addEventListener('click', () => {
+        cat.task.items.push('');
+        renderItems(); schedulePreview();
+      });
+    }
+    renderItems();
+  }
+
+  function renderTasksTab(){
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="section-title">
+        <h2>Задания</h2>
+        <button class="add-btn" id="add-category-btn">+ Добавить категорию</button>
+      </div>
+      <div class="section-hint">Каждая категория — замок в комнате: вопрос открывает предметы для расстановки.</div>
+      <div id="categories-list"></div>
+    `;
+    tabContent.appendChild(wrap);
+
+    const categoriesList = wrap.querySelector('#categories-list');
+
+    function renderList(){
+      categoriesList.innerHTML = '';
+      state.categories.forEach((cat) => {
+        ensureTaskDefaults(cat);
+        const defaultBaseSize = (cat.items[0] && cat.items[0].baseSize) || 100;
+
+        const itemsHtml = cat.items.map((item) => `
+          <div class="item-row" data-item-id="${item.id}">
+            <div class="item-thumb" style="background-image:url('${item.img || ''}')"></div>
+            <input type="text" value="${escapeAttr(item.img || '')}" placeholder="Ссылка на картинку предмета">
+            <button class="remove-btn" title="Удалить предмет">×</button>
+          </div>
+        `).join('');
+
+        const card = document.createElement('div');
+        card.className = 'category-card';
+        card.innerHTML = `
+          <div class="cat-top">
+            <input type="text" class="cat-label" value="${escapeAttr(cat.label)}" placeholder="Название категории">
+            <label class="cat-active-toggle">
+              <input type="checkbox" class="cat-active-cb" ${cat.active ? 'checked' : ''}> Активна
+            </label>
+            <label class="cat-basesize">
+              Размер предметов
+              <input type="number" class="cat-basesize-input" value="${defaultBaseSize}" min="30" max="400">
+            </label>
+            <button class="cat-remove">Удалить категорию</button>
+          </div>
+          <div class="cat-body">
+            <div class="cat-task"></div>
+            <div class="cat-items">
+              <span class="field-label">Предметы категории</span>
+              <div class="cat-items-list">${itemsHtml}</div>
+              <button class="add-item-btn">+ Добавить предмет</button>
+            </div>
+          </div>
+        `;
+
+        buildTaskSection(cat, card.querySelector('.cat-task'));
+
+        card.querySelector('.cat-label').addEventListener('input', (e) => {
+          cat.label = e.target.value;
+          cat.task.title = e.target.value;
+          schedulePreview();
+        });
+        card.querySelector('.cat-active-cb').addEventListener('change', (e) => {
+          cat.active = e.target.checked;
+          schedulePreview();
+        });
+        card.querySelector('.cat-basesize-input').addEventListener('input', (e) => {
+          const val = parseInt(e.target.value, 10) || 100;
+          cat.items.forEach(it => it.baseSize = val);
+          schedulePreview();
+        });
+        card.querySelector('.cat-remove').addEventListener('click', () => {
+          state.categories = state.categories.filter(c => c !== cat);
+          renderList();
+          schedulePreview();
+        });
+        card.querySelectorAll('.item-row').forEach((row) => {
+          const itemId = row.dataset.itemId;
+          const item = cat.items.find(it => it.id === itemId);
+          const input = row.querySelector('input[type="text"]');
+          const thumb = row.querySelector('.item-thumb');
+          input.addEventListener('input', () => {
+            item.img = input.value;
+            thumb.style.backgroundImage = `url('${input.value}')`;
+            schedulePreview();
+          });
+          row.querySelector('.remove-btn').addEventListener('click', () => {
+            cat.items = cat.items.filter(it => it !== item);
+            renderList();
+            schedulePreview();
+          });
+        });
+        card.querySelector('.add-item-btn').addEventListener('click', () => {
+          cat.items.push({id: uid('item'), img: '', baseSize: defaultBaseSize});
+          renderList();
+          schedulePreview();
+        });
+
+        categoriesList.appendChild(card);
+      });
+    }
+    renderList();
+
+    wrap.querySelector('#add-category-btn').addEventListener('click', () => {
+      const id = uid('cat');
+      state.categories.push({
+        id,
+        label: 'Новая категория',
+        solved: false,
+        active: true,
+        task: {
+          title: 'Новая категория',
+          question: '',
+          options: [
+            {text:'', correct:true},
+            {text:'', correct:false},
+            {text:'', correct:false}
+          ]
+        },
+        items: []
+      });
+      renderList();
+      schedulePreview();
+    });
+  }
+
+  // ---------- Вкладка: Текст (шрифт и язык) ----------
+  function renderTextTab(){
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="section-title"><h2>Текст</h2></div>
+      <div class="section-hint">Шрифт и язык интерфейса игры.</div>
+
+      <div class="field-block">
+        <label class="title">Шрифтовая пара</label>
+        <select id="font-select"></select>
+        <div class="font-preview">
+          <div class="fp-h" id="fp-heading">Готовность комнаты</div>
+          <div class="fp-b" id="fp-body">Реши задания, чтобы получить предметы</div>
+        </div>
+      </div>
+
+      <div class="field-block">
+        <label class="title">Язык интерфейса</label>
+        <select id="lang-select"></select>
+      </div>
+    `;
+    tabContent.appendChild(wrap);
+
+    const fontSelect = wrap.querySelector('#font-select');
+    FONT_PRESETS.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.id; opt.textContent = f.label;
+      if (f.id === state.fontPreset) opt.selected = true;
+      fontSelect.appendChild(opt);
+    });
+
+    function updateFontPreview(){
+      const preset = getFontPreset();
+      wrap.querySelector('#fp-heading').style.fontFamily = preset.display;
+      wrap.querySelector('#fp-body').style.fontFamily = preset.body;
+    }
+    updateFontPreview();
+
+    fontSelect.addEventListener('change', () => {
+      state.fontPreset = fontSelect.value;
+      updateFontPreview();
+      schedulePreview();
+    });
+
+    const langSelect = wrap.querySelector('#lang-select');
+    LANG_OPTIONS.forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = l.id; opt.textContent = l.label;
+      if (l.id === state.lang) opt.selected = true;
+      langSelect.appendChild(opt);
+    });
+    langSelect.addEventListener('change', () => {
+      state.lang = langSelect.value;
+      schedulePreview();
+    });
+  }
+
+  // ---------- Вкладка: Редактор текста ----------
+  function renderTextEditorTab(){
+    const fields = [
+      {key:'progressLabel', label:'Подпись прогресс-бара', hint:'Например: «Готовность комнаты»'},
+      {key:'categoryTitle', label:'Заголовок списка категорий', hint:'Например: «Категории»'},
+      {key:'locationTitle', label:'Заголовок стартового экрана', hint:'Например: «Выбери комнату»'},
+      {key:'locationSub', label:'Подзаголовок стартового экрана', hint:''},
+      {key:'trayEmpty', label:'Текст пустого лотка предметов', hint:'Показывается, пока не решена ни одна категория'},
+      {key:'taskClose', label:'Текст кнопки закрытия задания', hint:'Например: «Закрыть»'}
+    ];
+
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="section-title"><h2>Редактор текста</h2></div>
+      <div class="section-hint">Все надписи интерфейса игры, которые не зависят от категорий — можно перевести или переформулировать.</div>
+      <div id="text-fields"></div>
+    `;
+    tabContent.appendChild(wrap);
+
+    const fieldsWrap = wrap.querySelector('#text-fields');
+    fields.forEach(f => {
+      const row = document.createElement('div');
+      row.className = 'text-field-row';
+      row.innerHTML = `
+        <label>${f.label}</label>
+        <input type="text" value="${escapeAttr(state.text[f.key])}">
+      `;
+      row.querySelector('input').addEventListener('input', (e) => {
+        state.text[f.key] = e.target.value;
+        schedulePreview();
+      });
+      fieldsWrap.appendChild(row);
+    });
+  }
+
+  // ---------- Вкладка: Дизайн ----------
+  function renderDesignTab(){
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="section-title"><h2>Дизайн</h2></div>
+      <div class="section-hint">Цвета замков, прогресс-бара и плашек вопроса (вариантов ответа).</div>
+
+      <div class="color-row">
+        <label>Основной акцент (замки, рамки, прогресс)</label>
+        <input type="color" id="color-gold" value="${state.design.gold}">
+      </div>
+      <div class="color-row">
+        <label>Цвет заголовков</label>
+        <input type="color" id="color-gold-soft" value="${state.design.goldSoft}">
+      </div>
+      <div class="color-row">
+        <label>Цвет правильного ответа</label>
+        <input type="color" id="color-glow" value="${state.design.glow}">
+      </div>
+      <div class="color-row">
+        <label>Цвет неправильного ответа / удаления</label>
+        <input type="color" id="color-danger" value="${state.design.danger}">
+      </div>
+
+      <div class="field-label" style="margin-top:6px;">Как это будет выглядеть</div>
+      <div class="design-preview">
+        <div class="design-opt-demo" id="demo-normal">Вариант ответа</div>
+        <div class="design-opt-demo" id="demo-correct">Правильный вариант</div>
+        <div class="design-opt-demo" id="demo-wrong">Неправильный вариант</div>
+      </div>
+    `;
+    tabContent.appendChild(wrap);
+
+    function updateDemo(){
+      wrap.querySelector('#demo-normal').style.borderColor = state.design.gold;
+      wrap.querySelector('#demo-correct').style.borderColor = state.design.glow;
+      wrap.querySelector('#demo-wrong').style.borderColor = state.design.danger;
+    }
+    updateDemo();
+
+    wrap.querySelector('#color-gold').addEventListener('input', (e) => {
+      state.design.gold = e.target.value; updateDemo(); schedulePreview();
+    });
+    wrap.querySelector('#color-gold-soft').addEventListener('input', (e) => {
+      state.design.goldSoft = e.target.value; updateDemo(); schedulePreview();
+    });
+    wrap.querySelector('#color-glow').addEventListener('input', (e) => {
+      state.design.glow = e.target.value; updateDemo(); schedulePreview();
+    });
+    wrap.querySelector('#color-danger').addEventListener('input', (e) => {
+      state.design.danger = e.target.value; updateDemo(); schedulePreview();
+    });
+  }
+
+  // ---------- Вкладка: Экспорт ----------
+  function renderExportTab(){
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="section-title"><h2>Экспорт</h2></div>
+      <div id="export-panel">
+        <button id="download-btn">Скачать HTML</button>
+        <button id="copy-btn">Скопировать код для iframe</button>
+        <div id="export-info"></div>
+      </div>
+
+      <div id="instructions">
+        <h3>Как встроить игру в Genially</h3>
+        <ol>
+          <li><b>Скачать HTML</b> — получишь один готовый файл игры. Залей его на свой GitHub (тот же репозиторий, что и картинки) через <code>Add file → Upload files</code>, возьми ссылку вида <code>https://nastyaiv3100-cyber.github.io/Pic/имя-файла.html</code> и вставь как источник для iframe-элемента в Genially.</li>
+          <li><b>Скопировать код для iframe</b> — копирует готовый тег <code>&lt;iframe srcdoc="..."&gt;</code> с игрой прямо внутри. Если в Genially есть блок «вставить HTML/код» — можно вставить туда напрямую, без загрузки файла на GitHub.</li>
+        </ol>
+      </div>
+    `;
+    tabContent.appendChild(wrap);
+
+    wrap.querySelector('#download-btn').addEventListener('click', () => {
+      const html = generateHTML();
+      const blob = new Blob([html], {type:'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'room-play.html';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      const kb = Math.round(blob.size / 1024);
+      wrap.querySelector('#export-info').textContent = `Файл готов — ${kb} КБ`;
+    });
+
+    wrap.querySelector('#copy-btn').addEventListener('click', () => {
+      const html = generateHTML();
+      const iframeCode = `<iframe srcdoc="${escapeAttr(html)}" style="width:100%;height:700px;border:none;" allow="autoplay"></iframe>`;
+      navigator.clipboard.writeText(iframeCode).then(() => {
+        wrap.querySelector('#export-info').textContent = 'Код iframe скопирован в буфер обмена';
+      }).catch(() => {
+        wrap.querySelector('#export-info').textContent = 'Не удалось скопировать — попробуй скачать HTML вместо этого';
+      });
+    });
+  }
+
+  // ---------- Инициализация ----------
+  renderTabsBar();
+  renderTabContent();
+  sizePreviewFrame();
+  updatePreviewNow();
+
+})();
+</script>
+</body>
+</html>

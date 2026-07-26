@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Комната — прототип механики</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wall-deep: #2c2116;
+    --wall-mid: #4a3a26;
+    --wall-light: #6b5236;
+    --gold: #ff8234;
+    --gold-soft: #ffcf9e;
+    --glow: #a3bf6f;
+    --cream: #fae6d8;
+    --ink: #201a13;
+    --danger: #e2574c;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--ink);
+    font-family:'Nunito Sans', sans-serif;
+    color:var(--cream);
+    overflow:hidden;
+    -webkit-user-select:none; user-select:none;
+  }
+  #app{
+    width:100%; height:100%;
+    display:flex; flex-direction:column;
+    position:relative;
+  }
+
+  /* ---------- Прогресс ---------- */
+  #progress-bar{
+    flex:0 0 auto;
+    padding:14px 22px 12px;
+    background:linear-gradient(180deg, #3d2f1e, #2f2417);
+    border-bottom:1px solid rgba(255,130,52,0.25);
+    display:flex; align-items:center; gap:16px;
+    z-index:20;
+  }
+  #progress-label{
+    font-family:'Cormorant Garamond', serif;
+    font-size:20px; font-weight:600;
+    color:var(--gold-soft);
+    white-space:nowrap;
+  }
+  #progress-track{
+    flex:1;
+    height:10px;
+    border-radius:6px;
+    background:rgba(0,0,0,0.35);
+    overflow:hidden;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);
+  }
+  #progress-fill{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg, var(--glow), var(--gold));
+    border-radius:6px;
+    transition:width 0.6s cubic-bezier(.4,1.4,.6,1);
+  }
+  #progress-pct{
+    font-weight:700;
+    color:var(--glow);
+    min-width:44px;
+    text-align:right;
+  }
+
+  /* ---------- Стартовый экран выбора локации ---------- */
+  #location-screen{
+    position:fixed; inset:0;
+    z-index:100;
+    background:radial-gradient(circle at 50% 30%, #3d2f1e, #201911 75%);
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    overflow-y:auto;
+    gap:22px;
+    padding:48px 24px;
+  }
+  #location-screen-title{
+    font-family:'Cormorant Garamond', serif;
+    font-size:48px; font-weight:700;
+    color:var(--gold-soft);
+    text-align:center;
+    letter-spacing:0.3px;
+  }
+  #location-screen-sub{
+    margin-top:-18px;
+    font-size:16px;
+    color:rgba(243,234,217,0.6);
+    text-align:center;
+  }
+  #location-grid{
+    display:flex; flex-wrap:wrap;
+    justify-content:center;
+    gap:26px;
+    max-width:1100px;
+  }
+  .location-card{
+    width:260px; height:190px;
+    border-radius:16px;
+    background-size:cover;
+    background-position:center;
+    border:2px solid rgba(255,130,52,0.35);
+    cursor:pointer;
+    position:relative;
+    overflow:hidden;
+    transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+  .location-card:hover{
+    transform:translateY(-4px) scale(1.02);
+    border-color:var(--gold);
+    box-shadow:0 10px 26px rgba(0,0,0,0.45);
+  }
+  .location-card::after{
+    content:'';
+    position:absolute; inset:0;
+    background:linear-gradient(180deg, transparent 55%, rgba(10,7,16,0.55) 100%);
+  }
+  .location-card-label{
+    position:absolute;
+    left:10px; bottom:8px;
+    z-index:1;
+    font-size:13px; font-weight:700;
+    color:var(--cream);
+    text-shadow:0 1px 3px rgba(0,0,0,0.7);
+  }
+
+  /* ---------- Комната ---------- */
+  #room{
+    flex:1 1 auto;
+    position:relative;
+    display:flex;
+    overflow:hidden;
+  }
+  #room-visual{
+    flex:1 1 auto;
+    position:relative;
+    display:flex;
+    background-color:var(--wall-deep);
+    background-size:contain;
+    background-position:center top;
+    background-repeat:no-repeat;
+    overflow:hidden;
+  }
+  .wall-seg{
+    flex:1;
+    position:relative;
+  }
+
+  /* ---------- Список категорий (справа) ---------- */
+  #category-list{
+    flex:0 0 210px;
+    background:linear-gradient(180deg, #382b1b, #271f15);
+    border-left:1px solid rgba(255,130,52,0.25);
+    padding:16px 12px;
+    display:flex; flex-direction:column; gap:8px;
+    overflow-y:auto;
+  }
+  #category-list-title{
+    font-family:'Cormorant Garamond', serif;
+    font-size:17px; font-weight:600;
+    color:var(--gold-soft);
+    margin:0 4px 6px;
+    letter-spacing:0.3px;
+  }
+  .lock-slot{
+    display:flex; align-items:center; gap:12px;
+    width:100%;
+    padding:9px 10px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:background .2s ease;
+  }
+  .lock-slot.active:hover{ background:rgba(255,130,52,0.1); }
+  .lock-slot.solved:hover{ background:rgba(163,191,111,0.1); }
+  .lock-slot.viewing{ background:rgba(163,191,111,0.16); }
+  .lock-icon{
+    flex:0 0 auto;
+    width:44px; height:44px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #5a4066, #241a35 75%);
+    border:2px solid var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px;
+    box-shadow:0 0 0 rgba(255,130,52,0);
+    transition:box-shadow .3s ease, transform .2s ease;
+  }
+  .lock-slot.active .lock-icon{
+    animation:pulse-glow 2.2s ease-in-out infinite;
+    cursor:pointer;
+  }
+  .lock-slot.solved .lock-icon{
+    background:radial-gradient(circle at 35% 30%, #3d6b5c, #1c3a30 75%);
+    border-color:var(--glow);
+    box-shadow:0 0 18px rgba(163,191,111,0.55);
+  }
+  .lock-slot.disabled .lock-icon{
+    opacity:0.45;
+    cursor:default;
+  }
+  @keyframes pulse-glow{
+    0%,100%{ box-shadow:0 0 10px rgba(255,130,52,0.55); transform:scale(1); }
+    50%{ box-shadow:0 0 26px rgba(255,130,52,0.95); transform:scale(1.06); }
+  }
+  .lock-label{
+    flex:1 1 auto;
+    font-size:13.5px;
+    font-weight:600;
+    text-align:left;
+    color:var(--gold-soft);
+    line-height:1.25;
+  }
+  .lock-slot.disabled .lock-label{ opacity:0.55; }
+
+  .placed-item{
+    position:absolute;
+    touch-action:none;
+  }
+  .item-visual{
+    position:absolute;
+    inset:0;
+    display:flex; align-items:center; justify-content:center;
+    transform-origin:center center;
+    cursor:grab;
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,0.45));
+  }
+  .item-visual:active{ cursor:grabbing; }
+  .placed-item.selected .item-visual{
+    outline:2px dashed var(--glow);
+    outline-offset:6px;
+    border-radius:8px;
+  }
+  .placed-item .glyph{
+    font-size:40px;
+    line-height:1;
+    pointer-events:none;
+  }
+  .placed-item img{
+    width:100%; height:100%;
+    object-fit:contain;
+    pointer-events:none;
+  }
+
+  /* Якорь: увеличение + свободный поворот одним движением */
+  .item-handle{
+    position:absolute;
+    right:-9px; bottom:-9px;
+    width:18px; height:18px;
+    border-radius:50%;
+    background:var(--glow);
+    border:2px solid var(--ink);
+    box-shadow:0 0 6px rgba(163,191,111,0.7);
+    display:none;
+    cursor:grab;
+    z-index:2;
+  }
+  .item-handle:active{ cursor:grabbing; }
+  .placed-item.selected .item-handle{ display:block; }
+
+  /* Кнопка убрать предмет — не наследует поворот/масштаб */
+  .item-delete{
+    position:absolute;
+    top:-11px; left:-11px;
+    width:22px; height:22px;
+    border-radius:50%;
+    background:var(--danger);
+    color:var(--ink);
+    border:none;
+    font-size:14px; font-weight:700; line-height:1;
+    display:none;
+    align-items:center; justify-content:center;
+    cursor:pointer;
+    z-index:3;
+  }
+  .placed-item.selected .item-delete{ display:flex; }
+
+  /* Кнопки отражения — тоже не наследуют поворот/масштаб */
+  .item-flip{
+    position:absolute;
+    width:20px; height:20px;
+    border-radius:50%;
+    background:var(--wall-light);
+    color:var(--gold-soft);
+    border:2px solid var(--ink);
+    font-size:12px; font-weight:700; line-height:1;
+    display:none;
+    align-items:center; justify-content:center;
+    cursor:pointer;
+    z-index:2;
+  }
+  .item-flip:hover{ background:var(--gold); color:var(--ink); }
+  .placed-item.selected .item-flip{ display:flex; }
+  .item-flip-h{ top:-10px; right:-10px; }
+  .item-flip-v{ bottom:-10px; left:-10px; }
+
+  /* ---------- Инвентарь ---------- */
+  #tray{
+    flex:0 0 auto;
+    max-height:190px;
+    background:linear-gradient(180deg, #271f15, #1c160f);
+    border-top:1px solid rgba(255,130,52,0.25);
+    display:flex; flex-direction:column;
+    gap:2px;
+    padding:10px 18px;
+    overflow-y:auto;
+  }
+  #tray .empty-note{
+    color:rgba(243,234,217,0.45);
+    font-style:italic;
+    font-size:14px;
+    padding:8px 0;
+  }
+  .tray-group{
+    display:flex; align-items:center; gap:14px;
+    padding:8px 0;
+  }
+  .tray-group + .tray-group{
+    border-top:1px solid rgba(255,130,52,0.12);
+  }
+  .tray-group-label{
+    flex:0 0 92px;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--gold-soft);
+    letter-spacing:0.2px;
+    line-height:1.2;
+  }
+  .tray-group-items{
+    flex:1;
+    display:flex; align-items:center;
+    gap:12px;
+    overflow-x:auto;
+    padding:2px 0;
+  }
+  .tray-item{
+    flex:0 0 auto;
+    width:64px; height:64px;
+    border-radius:10px;
+    background:rgba(255,130,52,0.08);
+    border:1px solid rgba(255,130,52,0.35);
+    display:flex; align-items:center; justify-content:center;
+    font-size:32px;
+    cursor:grab;
+    transition:transform .15s ease;
+  }
+  .tray-item:hover{ transform:translateY(-3px); }
+  .tray-item.dragging{ opacity:0.3; }
+  .tray-item img{
+    width:100%; height:100%;
+    object-fit:contain;
+    pointer-events:none;
+  }
+
+  /* ---------- Модалка задания ---------- */
+  #task-overlay{
+    position:fixed; inset:0;
+    background:rgba(10,7,16,0.72);
+    display:none; align-items:center; justify-content:center;
+    z-index:50;
+  }
+  #task-overlay.visible{ display:flex; }
+  #task-card{
+    background:linear-gradient(180deg, #3d2f1e, #2c2116);
+    border:1px solid var(--gold);
+    border-radius:16px;
+    padding:28px 30px;
+    width:min(420px, 88vw);
+    box-shadow:0 20px 50px rgba(0,0,0,0.5);
+  }
+  #task-card h3{
+    font-family:'Cormorant Garamond', serif;
+    font-size:26px;
+    color:var(--gold-soft);
+    margin:0 0 6px;
+  }
+  #task-card p{
+    font-size:14.5px;
+    color:rgba(243,234,217,0.85);
+    margin:0 0 18px;
+    line-height:1.4;
+  }
+  .task-options{ display:flex; flex-direction:column; gap:10px; }
+  .task-opt{
+    background:rgba(255,130,52,0.08);
+    border:1px solid rgba(255,130,52,0.4);
+    color:var(--cream);
+    padding:11px 14px;
+    border-radius:10px;
+    font-size:14.5px;
+    text-align:left;
+    cursor:pointer;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .task-opt:hover{ background:rgba(255,130,52,0.18); }
+  .task-opt.correct{ background:rgba(163,191,111,0.25); border-color:var(--glow); }
+  .task-opt.wrong{ background:rgba(226,87,76,0.25); border-color:var(--danger); }
+
+  /* Верно / неверно */
+  .tf-row{ display:flex; gap:12px; }
+  .tf-btn{
+    flex:1;
+    background:rgba(255,130,52,0.08);
+    border:1px solid rgba(255,130,52,0.4);
+    color:var(--cream);
+    padding:14px; border-radius:10px;
+    font-size:15px; font-weight:700;
+    cursor:pointer;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .tf-btn:hover{ background:rgba(255,130,52,0.18); }
+  .tf-btn.correct{ background:rgba(163,191,111,0.25); border-color:var(--glow); }
+  .tf-btn.wrong{ background:rgba(226,87,76,0.25); border-color:var(--danger); }
+
+  /* Ввод ответа */
+  .input-row{ display:flex; gap:10px; }
+  .input-field{
+    flex:1;
+    background:rgba(0,0,0,0.25);
+    border:1px solid rgba(255,130,52,0.4);
+    color:var(--cream);
+    padding:11px 14px; border-radius:10px;
+    font-size:14.5px;
+  }
+  .input-field:focus{ outline:none; border-color:var(--gold); }
+  .input-check-btn{
+    background:var(--gold); color:var(--ink);
+    border:none; padding:0 18px; border-radius:10px;
+    font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .input-field.wrong{ border-color:var(--danger); }
+  .input-field.correct{ border-color:var(--glow); }
+  .input-feedback{ font-size:12.5px; margin-top:8px; min-height:16px; }
+  .input-feedback.wrong{ color:var(--danger); }
+  .input-feedback.correct{ color:var(--glow); }
+
+  /* Сопоставление пар */
+  .match-columns{ display:flex; gap:16px; }
+  .match-col{ flex:1; display:flex; flex-direction:column; gap:8px; }
+  .match-pill{
+    background:rgba(255,130,52,0.08);
+    border:1px solid rgba(255,130,52,0.4);
+    color:var(--cream);
+    padding:9px 12px; border-radius:9px;
+    font-size:13.5px; text-align:left; cursor:pointer;
+  }
+  .match-pill:hover{ background:rgba(255,130,52,0.18); }
+  .match-pill.selected{ border-color:var(--gold); background:rgba(255,130,52,0.25); }
+  .match-pill.matched{ border-color:var(--glow); background:rgba(163,191,111,0.2); cursor:default; opacity:0.85; }
+  .match-pill.wrong-flash{ border-color:var(--danger); background:rgba(226,87,76,0.25); }
+
+  /* Расставить по порядку */
+  .order-list{ display:flex; flex-direction:column; gap:8px; }
+  .order-item{
+    display:flex; align-items:center; gap:10px;
+    background:rgba(255,130,52,0.08);
+    border:1px solid rgba(255,130,52,0.4);
+    color:var(--cream);
+    padding:9px 12px; border-radius:9px;
+    font-size:13.5px;
+  }
+  .order-item .order-text{ flex:1; }
+  .order-move-btn{
+    background:none; border:1px solid rgba(255,130,52,0.5);
+    color:var(--gold-soft); width:26px; height:26px; border-radius:6px;
+    cursor:pointer; font-size:13px; line-height:1;
+  }
+  .order-move-btn:disabled{ opacity:0.3; cursor:default; }
+  .order-check-btn{
+    margin-top:14px; width:100%;
+    background:var(--gold); color:var(--ink);
+    border:none; padding:11px; border-radius:10px;
+    font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .order-feedback{ font-size:12.5px; margin-top:8px; min-height:16px; }
+  .order-feedback.wrong{ color:var(--danger); }
+  .order-feedback.correct{ color:var(--glow); }
+
+  #task-close{
+    margin-top:18px;
+    background:none; border:none;
+    color:rgba(243,234,217,0.5);
+    font-size:13px; cursor:pointer;
+    text-decoration:underline;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="progress-bar">
+    <div id="progress-label">Готовность комнаты</div>
+    <div id="progress-track"><div id="progress-fill"></div></div>
+    <div id="progress-pct">0%</div>
+  </div>
+
+  <div id="location-screen">
+    <div id="location-screen-title">Выбери комнату</div>
+    <div id="location-screen-sub">Потом сможешь расставить в ней предметы</div>
+    <div id="location-grid"></div>
+  </div>
+
+  <div id="room">
+    <div id="room-visual">
+      <div class="wall-seg"></div>
+      <div class="wall-seg"></div>
+      <div class="wall-seg"></div>
+    </div>
+
+    <div id="category-list">
+      <div id="category-list-title">Категории</div>
+    </div>
+  </div>
+
+  <div id="tray">
+    <div class="empty-note">Реши задания, чтобы получить предметы</div>
+  </div>
+
+  <div id="task-overlay">
+    <div id="task-card">
+      <h3 id="task-title">Задание</h3>
+      <p id="task-question"></p>
+      <div id="task-body"></div>
+      <button id="task-close">Закрыть</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+
+  // ---------- Конфигурация категорий (демо-данные редактора) ----------
+  const categories = [
+    {
+      id: 'table',
+      label: 'Столик',
+      solved: false,
+      active: true, // рабочая категория в этом прототипе
+      task: {
+        title: 'Столик',
+        question: 'Сколько будет 6 × 4?',
+        options: [
+          {text:'20', correct:false},
+          {text:'24', correct:true},
+          {text:'18', correct:false}
+        ]
+      },
+      items: [
+        {id:'table1', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/s1.png?raw=true', baseSize:130},
+        {id:'table2', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/s2.png?raw=true', baseSize:130},
+        {id:'table3', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/s3.png?raw=true', baseSize:130},
+        {id:'table4', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/s4.png?raw=true', baseSize:130},
+        {id:'table5', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/s5.png?raw=true', baseSize:130}
+      ]
+    },
+    {
+      id:'armchair',
+      label:'Кресло',
+      solved:false,
+      active:true, // пятая рабочая категория
+      task: {
+        title: 'Кресло',
+        question: 'Сколько будет 7 × 3?',
+        options: [
+          {text:'21', correct:true},
+          {text:'18', correct:false},
+          {text:'24', correct:false}
+        ]
+      },
+      items:[
+        {id:'armchair1', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/d1.png?raw=true', baseSize:140},
+        {id:'armchair2', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/d2.png?raw=true', baseSize:140},
+        {id:'armchair3', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/d3.png?raw=true', baseSize:140},
+        {id:'armchair4', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/d4.png?raw=true', baseSize:140},
+        {id:'armchair5', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/d5.png?raw=true', baseSize:140}
+      ]
+    },
+    {
+      id:'decor',
+      label:'Декорации',
+      solved:false,
+      active:true, // шестая рабочая категория
+      task: {
+        title: 'Декорации',
+        question: 'Сколько будет 40 − 16?',
+        options: [
+          {text:'24', correct:true},
+          {text:'26', correct:false},
+          {text:'22', correct:false}
+        ]
+      },
+      items:[
+        {id:'decor1', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/dic1.png?raw=true', baseSize:90},
+        {id:'decor2', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/dic2.png?raw=true', baseSize:90},
+        {id:'decor3', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/dic3.png?raw=true', baseSize:90},
+        {id:'decor4', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/dic4.png?raw=true', baseSize:90},
+        {id:'decor5', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/dic5.png?raw=true', baseSize:90}
+      ]
+    },
+    {
+      id:'items',
+      label:'Предметы',
+      solved:false,
+      active:true, // седьмая рабочая категория
+      task: {
+        title: 'Предметы',
+        question: 'Сколько будет 9 × 5?',
+        options: [
+          {text:'45', correct:true},
+          {text:'40', correct:false},
+          {text:'54', correct:false}
+        ]
+      },
+      items:[
+        {id:'items1', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr1.png?raw=true', baseSize:90},
+        {id:'items2', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr2.png?raw=true', baseSize:90},
+        {id:'items3', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr3.png?raw=true', baseSize:90},
+        {id:'items4', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr7.png?raw=true', baseSize:90},
+        {id:'items5', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr5.png?raw=true', baseSize:90},
+        {id:'items6', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/pr6.png?raw=true', baseSize:90}
+      ]
+    },
+    {
+      id:'paintings',
+      label:'Картины',
+      solved:false,
+      active:true, // третья рабочая категория
+      task: {
+        title: 'Картины',
+        question: 'Какое число идёт следующим: 2, 4, 6, 8, ...?',
+        options: [
+          {text:'9', correct:false},
+          {text:'10', correct:true},
+          {text:'12', correct:false}
+        ]
+      },
+      items:[
+        {id:'painting1', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/k1.png?raw=true', baseSize:110},
+        {id:'painting2', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/k2.png?raw=true', baseSize:110},
+        {id:'painting3', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/k3.png?raw=true', baseSize:110},
+        {id:'painting5', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/k5.png?raw=true', baseSize:110},
+        {id:'painting6', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/k6.png?raw=true', baseSize:110}
+      ]
+    },
+    {
+      id:'sofa',
+      label:'Диван',
+      solved:false,
+      active:true, // четвёртая рабочая категория
+      task: {
+        title: 'Диван',
+        question: 'Сколько будет 15 + 9?',
+        options: [
+          {text:'23', correct:false},
+          {text:'24', correct:true},
+          {text:'25', correct:false}
+        ]
+      },
+      items:[
+        {id:'sofa1', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/kr1.png?raw=true', baseSize:140},
+        {id:'sofa2', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/kr2.png?raw=true', baseSize:140},
+        {id:'sofa3', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/kr3.png?raw=true', baseSize:140},
+        {id:'sofa4', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/kr4.png?raw=true', baseSize:140},
+        {id:'sofa5', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/kr5.png?raw=true', baseSize:140}
+      ]
+    },
+    {
+      id:'cabinet',
+      label:'Шкаф',
+      solved:false,
+      active:true, // вторая рабочая категория — тестируем предмет-картинку
+      task: {
+        title: 'Шкаф',
+        question: 'Раздели 36 на 4.',
+        options: [
+          {text:'8', correct:false},
+          {text:'9', correct:true},
+          {text:'6', correct:false}
+        ]
+      },
+      items: [
+        {id:'cabinet2', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/cab1.png?raw=true', baseSize:130},
+        {id:'cabinet3', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/%D1%81ab2.png?raw=true', baseSize:130},
+        {id:'cabinet4', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/cub3.png?raw=true', baseSize:130},
+        {id:'cabinet5', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/cub4.png?raw=true', baseSize:130},
+        {id:'cabinet6', img:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/cub5.png?raw=true', baseSize:130}
+      ]
+    }
+  ];
+
+  // Каждая категория даёт максимум 2 балла: 1 за открытие замка, 1 за то,
+  // что в комнату поставлен хотя бы один предмет из неё (сколько бы их ни было дальше)
+  const totalSteps = categories.length * 2;
+
+  const room = document.getElementById('room-visual');
+  const categoryList = document.getElementById('category-list');
+  const tray = document.getElementById('tray');
+  const progressFill = document.getElementById('progress-fill');
+  const progressPct = document.getElementById('progress-pct');
+
+  const overlay = document.getElementById('task-overlay');
+  const taskTitle = document.getElementById('task-title');
+  const taskQuestion = document.getElementById('task-question');
+  const taskBody = document.getElementById('task-body');
+  const taskClose = document.getElementById('task-close');
+
+  let selectedItem = null;
+  let zCounter = 10;
+  let currentTaskCat = null;
+
+  // ---------- Локации (фоны комнаты) ----------
+  const locations = [
+    {id:'room1', url:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/f2.png?raw=true'},
+    {id:'room2', url:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/f4.png?raw=true'},
+    {id:'room3', url:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/f5.png?raw=true'},
+    {id:'room4', url:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/%D0%BC%20(93).png?raw=true'},
+    {id:'room5', url:'https://github.com/nastyaiv3100-cyber/Pic/blob/main/%D0%BC%20(95).png?raw=true'}
+  ];
+
+  const locationGrid = document.getElementById('location-grid');
+  const locationScreen = document.getElementById('location-screen');
+
+  function setLocation(url){
+    room.style.backgroundImage = `url('${url}')`;
+  }
+
+  locations.forEach((loc, i) => {
+    const card = document.createElement('div');
+    card.className = 'location-card';
+    card.style.backgroundImage = `url('${loc.url}')`;
+    card.innerHTML = `<div class="location-card-label">Комната ${i + 1}</div>`;
+    card.addEventListener('click', () => {
+      setLocation(loc.url);
+      locationScreen.style.display = 'none';
+    });
+    locationGrid.appendChild(card);
+  });
+
+  // ---------- Отрисовка списка категорий в сайдбаре справа ----------
+  categories.forEach((cat) => {
+    const slot = document.createElement('div');
+    slot.className = 'lock-slot ' + (cat.active ? 'active' : 'disabled');
+    slot.dataset.catId = cat.id;
+    slot.innerHTML = `
+      <div class="lock-icon">🔒</div>
+      <div class="lock-label">${cat.label}</div>
+    `;
+    categoryList.appendChild(slot);
+
+    slot.addEventListener('click', () => {
+      if (cat.solved){
+        showCategoryTray(cat);
+        return;
+      }
+      if (!cat.active) return;
+      openTask(cat);
+    });
+  });
+
+  function openTask(cat){
+    currentTaskCat = cat;
+    const task = cat.task;
+    const type = task.type || 'quiz';
+    taskTitle.textContent = task.title;
+    taskQuestion.textContent = task.question || '';
+    taskBody.innerHTML = '';
+
+    if (type === 'quiz') renderQuizTask(task);
+    else if (type === 'truefalse') renderTrueFalseTask(task);
+    else if (type === 'input') renderInputTask(task);
+    else if (type === 'match') renderMatchTask(task);
+    else if (type === 'order') renderOrderTask(task);
+    else renderQuizTask(task);
+
+    overlay.classList.add('visible');
+  }
+
+  function completeTask(){
+    setTimeout(() => {
+      overlay.classList.remove('visible');
+      solveCategory(currentTaskCat);
+    }, 500);
+  }
+
+  // ---- Тип: тест с вариантами ----
+  function renderQuizTask(task){
+    const wrap = document.createElement('div');
+    wrap.className = 'task-options';
+    (task.options || []).forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'task-opt';
+      btn.textContent = opt.text;
+      btn.addEventListener('click', () => {
+        if (opt.correct){
+          btn.classList.add('correct');
+          completeTask();
+        } else {
+          btn.classList.add('wrong');
+          setTimeout(() => btn.classList.remove('wrong'), 600);
+        }
+      });
+      wrap.appendChild(btn);
+    });
+    taskBody.appendChild(wrap);
+  }
+
+  // ---- Тип: верно / неверно ----
+  function renderTrueFalseTask(task){
+    const wrap = document.createElement('div');
+    wrap.className = 'tf-row';
+    [{label:'Верно', val:true}, {label:'Неверно', val:false}].forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'tf-btn';
+      btn.textContent = opt.label;
+      btn.addEventListener('click', () => {
+        if (opt.val === !!task.answer){
+          btn.classList.add('correct');
+          completeTask();
+        } else {
+          btn.classList.add('wrong');
+          setTimeout(() => btn.classList.remove('wrong'), 600);
+        }
+      });
+      wrap.appendChild(btn);
+    });
+    taskBody.appendChild(wrap);
+  }
+
+  // ---- Тип: ввод ответа текстом/числом ----
+  function renderInputTask(task){
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="input-row">
+        <input type="text" class="input-field" placeholder="Введи ответ">
+        <button class="input-check-btn">Проверить</button>
+      </div>
+      <div class="input-feedback"></div>
+    `;
+    const field = wrap.querySelector('.input-field');
+    const feedback = wrap.querySelector('.input-feedback');
+    const check = () => {
+      const given = field.value.trim().toLowerCase();
+      const correct = String(task.answer || '').trim().toLowerCase();
+      if (given.length && given === correct){
+        field.classList.remove('wrong'); field.classList.add('correct');
+        feedback.textContent = 'Верно!';
+        feedback.className = 'input-feedback correct';
+        completeTask();
+      } else {
+        field.classList.remove('correct'); field.classList.add('wrong');
+        feedback.textContent = 'Попробуй ещё раз';
+        feedback.className = 'input-feedback wrong';
+      }
+    };
+    wrap.querySelector('.input-check-btn').addEventListener('click', check);
+    field.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+    taskBody.appendChild(wrap);
+  }
+
+  // ---- Тип: соединение пар ----
+  function renderMatchTask(task){
+    const pairs = task.pairs || [];
+    const rightShuffled = pairs.map((p, i) => ({text:p.right, pairIndex:i}));
+    for (let i = rightShuffled.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [rightShuffled[i], rightShuffled[j]] = [rightShuffled[j], rightShuffled[i]];
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'match-columns';
+    const leftCol = document.createElement('div');
+    leftCol.className = 'match-col';
+    const rightCol = document.createElement('div');
+    rightCol.className = 'match-col';
+
+    let selectedLeft = null;
+    let selectedRight = null;
+    let matchedCount = 0;
+
+    pairs.forEach((p, i) => {
+      const pill = document.createElement('button');
+      pill.className = 'match-pill';
+      pill.textContent = p.left;
+      pill.dataset.pairIndex = i;
+      pill.addEventListener('click', () => {
+        if (pill.classList.contains('matched')) return;
+        leftCol.querySelectorAll('.match-pill').forEach(el => el.classList.remove('selected'));
+        pill.classList.add('selected');
+        selectedLeft = pill;
+        tryMatch();
+      });
+      leftCol.appendChild(pill);
+    });
+
+    rightShuffled.forEach(r => {
+      const pill = document.createElement('button');
+      pill.className = 'match-pill';
+      pill.textContent = r.text;
+      pill.dataset.pairIndex = r.pairIndex;
+      pill.addEventListener('click', () => {
+        if (pill.classList.contains('matched')) return;
+        rightCol.querySelectorAll('.match-pill').forEach(el => el.classList.remove('selected'));
+        pill.classList.add('selected');
+        selectedRight = pill;
+        tryMatch();
+      });
+      rightCol.appendChild(pill);
+    });
+
+    function tryMatch(){
+      if (!selectedLeft || !selectedRight) return;
+      if (selectedLeft.dataset.pairIndex === selectedRight.dataset.pairIndex){
+        selectedLeft.classList.add('matched');
+        selectedRight.classList.add('matched');
+        selectedLeft.classList.remove('selected');
+        selectedRight.classList.remove('selected');
+        matchedCount++;
+        selectedLeft = null; selectedRight = null;
+        if (matchedCount === pairs.length) completeTask();
+      } else {
+        selectedLeft.classList.add('wrong-flash');
+        selectedRight.classList.add('wrong-flash');
+        setTimeout(() => {
+          selectedLeft.classList.remove('selected', 'wrong-flash');
+          selectedRight.classList.remove('selected', 'wrong-flash');
+          selectedLeft = null; selectedRight = null;
+        }, 500);
+      }
+    }
+
+    wrap.appendChild(leftCol);
+    wrap.appendChild(rightCol);
+    taskBody.appendChild(wrap);
+  }
+
+  // ---- Тип: расставить по порядку ----
+  function renderOrderTask(task){
+    let current = (task.items || []).slice();
+    for (let i = current.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [current[i], current[j]] = [current[j], current[i]];
+    }
+
+    const wrap = document.createElement('div');
+    const list = document.createElement('div');
+    list.className = 'order-list';
+    const feedback = document.createElement('div');
+    feedback.className = 'order-feedback';
+
+    function render(){
+      list.innerHTML = '';
+      current.forEach((text, i) => {
+        const row = document.createElement('div');
+        row.className = 'order-item';
+        row.innerHTML = `
+          <button class="order-move-btn" data-dir="up" ${i === 0 ? 'disabled' : ''}>↑</button>
+          <button class="order-move-btn" data-dir="down" ${i === current.length - 1 ? 'disabled' : ''}>↓</button>
+          <div class="order-text">${text}</div>
+        `;
+        row.querySelector('[data-dir="up"]').addEventListener('click', () => {
+          [current[i-1], current[i]] = [current[i], current[i-1]];
+          render();
+        });
+        row.querySelector('[data-dir="down"]').addEventListener('click', () => {
+          [current[i], current[i+1]] = [current[i+1], current[i]];
+          render();
+        });
+        list.appendChild(row);
+      });
+    }
+    render();
+
+    const checkBtn = document.createElement('button');
+    checkBtn.className = 'order-check-btn';
+    checkBtn.textContent = 'Проверить порядок';
+    checkBtn.addEventListener('click', () => {
+      const correct = (task.items || []).every((t, i) => t === current[i]);
+      if (correct){
+        feedback.textContent = 'Верно!';
+        feedback.className = 'order-feedback correct';
+        completeTask();
+      } else {
+        feedback.textContent = 'Пока не так, попробуй ещё раз';
+        feedback.className = 'order-feedback wrong';
+      }
+    });
+
+    wrap.appendChild(list);
+    wrap.appendChild(checkBtn);
+    wrap.appendChild(feedback);
+    taskBody.appendChild(wrap);
+  }
+
+  taskClose.addEventListener('click', () => overlay.classList.remove('visible'));
+
+  function solveCategory(cat){
+    cat.solved = true;
+    const slot = document.querySelector(`.lock-slot[data-cat-id="${cat.id}"]`);
+    slot.classList.remove('active');
+    slot.classList.add('solved');
+    slot.querySelector('.lock-icon').textContent = '🔓';
+
+    showCategoryTray(cat);
+    updateProgress();
+  }
+
+  function showCategoryTray(cat){
+    // Подсветка выбранной категории в списке
+    document.querySelectorAll('.lock-slot').forEach(s => s.classList.remove('viewing'));
+    const slot = document.querySelector(`.lock-slot[data-cat-id="${cat.id}"]`);
+    if (slot) slot.classList.add('viewing');
+
+    // Лоток показывает предметы только одной категории за раз
+    tray.innerHTML = '';
+
+    const group = document.createElement('div');
+    group.className = 'tray-group';
+    group.dataset.catId = cat.id;
+    group.innerHTML = `
+      <div class="tray-group-label">${cat.label}</div>
+      <div class="tray-group-items"></div>
+    `;
+    tray.appendChild(group);
+    const groupItems = group.querySelector('.tray-group-items');
+
+    cat.items.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'tray-item';
+      if (item.img){
+        el.innerHTML = `<img src="${item.img}" alt="">`;
+      } else {
+        el.textContent = item.glyph;
+      }
+      el.draggable = true;
+      el.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          glyph: item.glyph || null,
+          img: item.img || null,
+          baseSize: item.baseSize || null,
+          catId: cat.id
+        }));
+        el.classList.add('dragging');
+      });
+      el.addEventListener('dragend', () => el.classList.remove('dragging'));
+      groupItems.appendChild(el);
+    });
+
+    updateProgress();
+  }
+
+  // ---------- Drag & drop предметов в комнату ----------
+  room.addEventListener('dragover', (e) => e.preventDefault());
+  room.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const raw = e.dataTransfer.getData('text/plain');
+    if (!raw) return;
+    let data;
+    try { data = JSON.parse(raw); } catch (err) { data = { glyph: raw }; }
+    const rect = room.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    placeItem(data, x, y);
+  });
+
+  function placeItem(data, x, y){
+    const baseSize = data.baseSize || 64;
+    const el = document.createElement('div');
+    el.className = 'placed-item';
+    el.style.width = baseSize + 'px';
+    el.style.height = baseSize + 'px';
+    el.style.left = (x - baseSize / 2) + 'px';
+    el.style.top = (y - baseSize / 2) + 'px';
+    el.dataset.cx = x;
+    el.dataset.cy = y;
+    el.dataset.scale = 1;
+    el.dataset.rot = 0;
+    el.dataset.flipx = 1;
+    el.dataset.flipy = 1;
+    el.dataset.base = baseSize;
+
+    const visualInner = data.img
+      ? `<img src="${data.img}" alt="">`
+      : `<div class="glyph">${data.glyph}</div>`;
+
+    el.innerHTML = `
+      <button class="item-delete" title="Убрать">×</button>
+      <button class="item-flip item-flip-h" title="Отразить по горизонтали">⇋</button>
+      <button class="item-flip item-flip-v" title="Отразить по вертикали">⇵</button>
+      <div class="item-visual">
+        ${visualInner}
+        <div class="item-handle" title="Тяни: увеличить и повернуть"></div>
+      </div>
+    `;
+    room.appendChild(el);
+    setupItemInteractions(el);
+    selectItem(el);
+
+    // Категория даёт балл за размещение только один раз —
+    // повторные предметы из той же категории уже ничего не добавляют
+    if (data.catId){
+      const cat = categories.find(c => c.id === data.catId);
+      if (cat && !cat.placed){
+        cat.placed = true;
+      }
+    }
+    updateProgress();
+  }
+
+  function applyTransform(el){
+    const visual = el.querySelector('.item-visual');
+    const scale = el.dataset.scale;
+    const flipX = el.dataset.flipx;
+    const flipY = el.dataset.flipy;
+    visual.style.transform = `rotate(${el.dataset.rot}deg) scale(${scale * flipX}, ${scale * flipY})`;
+  }
+
+  function setupItemInteractions(el){
+    const visual = el.querySelector('.item-visual');
+    const handle = el.querySelector('.item-handle');
+    const delBtn = el.querySelector('.item-delete');
+    const flipHBtn = el.querySelector('.item-flip-h');
+    const flipVBtn = el.querySelector('.item-flip-v');
+
+    flipHBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      el.dataset.flipx = parseFloat(el.dataset.flipx) * -1;
+      applyTransform(el);
+    });
+    flipVBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      el.dataset.flipy = parseFloat(el.dataset.flipy) * -1;
+      applyTransform(el);
+    });
+
+    // ---- Перемещение (тянем тело предмета) ----
+    let moving = false, startPX = 0, startPY = 0, startCX = 0, startCY = 0;
+
+    visual.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      selectItem(el);
+      moving = true;
+      visual.setPointerCapture(e.pointerId);
+      startPX = e.clientX; startPY = e.clientY;
+      startCX = parseFloat(el.dataset.cx);
+      startCY = parseFloat(el.dataset.cy);
+    });
+    visual.addEventListener('pointermove', (e) => {
+      if (!moving) return;
+      const dx = e.clientX - startPX;
+      const dy = e.clientY - startPY;
+      const nx = startCX + dx, ny = startCY + dy;
+      el.dataset.cx = nx; el.dataset.cy = ny;
+      const base = parseFloat(el.dataset.base);
+      el.style.left = (nx - base / 2) + 'px';
+      el.style.top = (ny - base / 2) + 'px';
+    });
+    visual.addEventListener('pointerup', () => moving = false);
+    visual.addEventListener('pointercancel', () => moving = false);
+
+    // ---- Якорь: тянем — растёт и вращается вокруг центра предмета ----
+    let handling = false;
+    handle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      selectItem(el);
+      handling = true;
+      handle.setPointerCapture(e.pointerId);
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!handling) return;
+      const roomRect = room.getBoundingClientRect();
+      const cx = parseFloat(el.dataset.cx);
+      const cy = parseFloat(el.dataset.cy);
+      const px = e.clientX - roomRect.left;
+      const py = e.clientY - roomRect.top;
+      const dx = px - cx, dy = py - cy;
+
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      const rot = angle - 45; // якорь стоит в углу под 45°, это нулевая точка поворота
+
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const base = parseFloat(el.dataset.base);
+      const baseDist = (base / 2) * Math.SQRT2;
+      let scale = dist / baseDist;
+      scale = Math.max(0.35, Math.min(4, scale));
+
+      el.dataset.rot = rot;
+      el.dataset.scale = scale;
+      applyTransform(el);
+    });
+    handle.addEventListener('pointerup', () => handling = false);
+    handle.addEventListener('pointercancel', () => handling = false);
+
+    // ---- Удаление ----
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      el.remove();
+      if (selectedItem === el) selectedItem = null;
+      updateProgress();
+    });
+  }
+
+  function selectItem(el){
+    if (selectedItem) selectedItem.classList.remove('selected');
+    selectedItem = el;
+    el.classList.add('selected');
+    zCounter++;
+    el.style.zIndex = zCounter;
+  }
+
+  room.addEventListener('pointerdown', (e) => {
+    if (e.target === room || e.target.classList.contains('wall-seg')){
+      if (selectedItem){
+        selectedItem.classList.remove('selected');
+        selectedItem = null;
+      }
+    }
+  });
+
+  // ---------- Прогресс ----------
+  function updateProgress(){
+    const done = categories.reduce((sum, c) => {
+      return sum + (c.solved ? 1 : 0) + (c.placed ? 1 : 0);
+    }, 0);
+    const pct = Math.min(100, Math.round((done / totalSteps) * 100));
+    progressFill.style.width = pct + '%';
+    progressPct.textContent = pct + '%';
+  }
+
+})();
+</script>
+</body>
+</html>
