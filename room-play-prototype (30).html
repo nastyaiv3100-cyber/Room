@@ -109,9 +109,12 @@
   #location-screen-title{
     font-family:'Cormorant Garamond', serif;
     font-size:48px; font-weight:700;
-    color:var(--gold-soft);
+    color:#ffcf9e;
     text-align:center;
     letter-spacing:0.3px;
+  }
+  #location-screen-title.neon-glow{
+    text-shadow:0 0 12px currentColor, 0 0 26px currentColor, 0 0 46px currentColor;
   }
   #location-screen-sub{
     margin-top:-18px;
@@ -696,7 +699,7 @@
   </div>
 
   <div id="location-screen">
-    <div id="location-screen-title">Выбери комнату</div>
+    <div id="location-screen-title" class="">Выбери комнату</div>
     <div id="location-screen-sub">Потом сможешь расставить в ней предметы</div>
     <div id="location-grid"></div>
   </div>
