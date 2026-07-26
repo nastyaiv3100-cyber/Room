@@ -79,7 +79,16 @@
     overflow-y:auto;
     gap:22px;
     padding:48px 24px;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,130,52,0.5) transparent;
   }
+  #location-screen::-webkit-scrollbar{ width:7px; }
+  #location-screen::-webkit-scrollbar-track{ background:transparent; }
+  #location-screen::-webkit-scrollbar-thumb{
+    background:rgba(255,130,52,0.45);
+    border-radius:4px;
+  }
+  #location-screen::-webkit-scrollbar-thumb:hover{ background:rgba(255,130,52,0.7); }
   #location-screen-title{
     font-family:'Cormorant Garamond', serif;
     font-size:48px; font-weight:700;
@@ -159,7 +168,16 @@
     padding:16px 12px;
     display:flex; flex-direction:column; gap:8px;
     overflow-y:auto;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,130,52,0.5) transparent;
   }
+  #category-list::-webkit-scrollbar{ width:7px; }
+  #category-list::-webkit-scrollbar-track{ background:transparent; }
+  #category-list::-webkit-scrollbar-thumb{
+    background:rgba(255,130,52,0.45);
+    border-radius:4px;
+  }
+  #category-list::-webkit-scrollbar-thumb:hover{ background:rgba(255,130,52,0.7); }
   #category-list-title{
     font-family:'Cormorant Garamond', serif;
     font-size:17px; font-weight:600;
@@ -307,7 +325,16 @@
     gap:2px;
     padding:10px 18px;
     overflow-y:auto;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,130,52,0.5) transparent;
   }
+  #tray::-webkit-scrollbar{ width:7px; }
+  #tray::-webkit-scrollbar-track{ background:transparent; }
+  #tray::-webkit-scrollbar-thumb{
+    background:rgba(255,130,52,0.45);
+    border-radius:4px;
+  }
+  #tray::-webkit-scrollbar-thumb:hover{ background:rgba(255,130,52,0.7); }
   #tray .empty-note{
     color:rgba(243,234,217,0.45);
     font-style:italic;
