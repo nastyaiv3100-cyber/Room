@@ -1147,7 +1147,7 @@
   function renderTrueFalseTask(task){
     const wrap = document.createElement('div');
     wrap.className = 'tf-row';
-    [{label:'Верно', val:true}, {label:'Неверно', val:false}].forEach(opt => {
+    [{label:TRUE_LABEL, val:true}, {label:FALSE_LABEL, val:false}].forEach(opt => {
       const btn = document.createElement('button');
       btn.className = 'tf-btn';
       btn.textContent = opt.label;
@@ -1614,6 +1614,8 @@
 
   // ---------- Прогресс ----------
   // ---------- Экран поздравления при 100% ----------
+  const TRUE_LABEL = 'Верно';
+  const FALSE_LABEL = 'Неверно';
   const COMPLETION_ENABLED = true;
   const completionScreen = document.getElementById('completion-screen');
   const completionImage = document.getElementById('completion-image');
