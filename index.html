@@ -1498,6 +1498,14 @@
       </div>
 
       <div class="section-hint" style="margin-top:18px;">Все изменения сохраняются автоматически в этом браузере — можно закрыть вкладку и продолжить позже.</div>
+
+      <div class="section-hint" style="margin-top:14px; color:var(--gold-soft); font-weight:700;">Резервная копия настроек редактора</div>
+      <div class="section-hint">Если автосохранение вдруг подведёт (другой браузер, другой компьютер, очистка кеша) — сохрани резервную копию в файл и потом загрузи её обратно.</div>
+      <button class="add-btn" id="save-file-btn" style="margin-top:6px;">💾 Сохранить в файл</button>
+      <button class="add-btn" id="load-file-btn" style="margin-left:10px;">📂 Загрузить из файла</button>
+      <input type="file" id="load-file-input" accept="application/json,.json" style="display:none;">
+
+      <div class="section-hint" style="margin-top:18px;"></div>
       <button class="cat-remove" id="reset-state-btn" style="margin-top:6px;">Сбросить к примеру</button>
 
       <div id="instructions">
@@ -1525,6 +1533,65 @@
       if (!confirm('Стереть все изменения и вернуться к примеру? Это нельзя отменить.')) return;
       clearSavedState();
       location.reload();
+    });
+
+    wrap.querySelector('#save-file-btn').addEventListener('click', () => {
+      const backup = {
+        locations: state.locations,
+        categories: state.categories,
+        design: state.design,
+        sound: state.sound,
+        text: state.text,
+        completion: state.completion,
+        locationSelectEnabled: state.locationSelectEnabled,
+        fontPreset: state.fontPreset,
+        lang: state.lang
+      };
+      const json = JSON.stringify(backup, null, 2);
+      const blob = new Blob([json], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'room-editor-config.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      wrap.querySelector('#export-info').textContent = 'Файл настроек редактора сохранён';
+    });
+
+    wrap.querySelector('#load-file-btn').addEventListener('click', () => {
+      wrap.querySelector('#load-file-input').click();
+    });
+
+    wrap.querySelector('#load-file-input').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const saved = JSON.parse(reader.result);
+          if (saved.locations) state.locations = saved.locations;
+          if (saved.categories) state.categories = saved.categories;
+          if (saved.design) state.design = Object.assign({}, state.design, saved.design);
+          if (saved.sound) state.sound = Object.assign({}, state.sound, saved.sound);
+          if (saved.text) state.text = Object.assign({}, state.text, saved.text);
+          if (saved.completion) state.completion = Object.assign({}, state.completion, saved.completion);
+          if (typeof saved.locationSelectEnabled === 'boolean') state.locationSelectEnabled = saved.locationSelectEnabled;
+          if (saved.fontPreset) state.fontPreset = saved.fontPreset;
+          if (saved.lang) state.lang = saved.lang;
+          saveState();
+          renderTabsBar();
+          renderTabContent();
+          updatePreviewNow();
+          const freshInfo = document.getElementById('export-info');
+          if (freshInfo) freshInfo.textContent = 'Настройки загружены из файла';
+        } catch (err) {
+          alert('Не удалось прочитать файл — убедись, что это тот самый файл настроек редактора.');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
     });
 
     wrap.querySelector('#download-btn').addEventListener('click', () => {
