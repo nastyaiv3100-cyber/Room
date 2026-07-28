@@ -57,6 +57,7 @@
     position:sticky; top:20px;
   }
   #preview-frame-wrap{
+    position:relative;
     border:2px solid rgba(143,184,220,0.35);
     border-radius:16px;
     overflow:hidden;
@@ -68,6 +69,15 @@
     border:none;
     background:#0e0b08;
   }
+  #preview-grid-overlay{
+    position:absolute; inset:0;
+    pointer-events:none;
+    display:none;
+    background-image:
+      repeating-linear-gradient(to right, rgba(255,130,52,0.35) 0, rgba(255,130,52,0.35) 1px, transparent 1px, transparent 40px),
+      repeating-linear-gradient(to bottom, rgba(255,130,52,0.35) 0, rgba(255,130,52,0.35) 1px, transparent 1px, transparent 40px);
+  }
+  #preview-grid-overlay.visible{ display:block; }
   #preview-label{
     display:flex; align-items:center; justify-content:space-between;
     margin-bottom:10px;
@@ -76,6 +86,23 @@
   #preview-status{
     font-size:11.5px; color:rgba(185,138,99,0.9);
   }
+  #preview-controls{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    margin-bottom:10px;
+  }
+  .grid-toggle{
+    display:flex; align-items:center; gap:6px;
+    font-size:13px; color:rgba(58,47,34,0.75);
+    white-space:nowrap;
+  }
+  #grid-step-input{ width:64px; }
+  #preview-controls .add-btn{ font-size:12.5px; padding:6px 12px; }
+
+  #app.preview-fullscreen #editor-col{ display:none; }
+  #app.preview-fullscreen #main-layout{ display:block; }
+  #app.preview-fullscreen #preview-col{ width:100%; max-width:none; }
+  #app.preview-fullscreen #preview-frame{ height:calc(100vh - 220px); }
+
   @media (max-width: 1280px){
     #main-layout{ flex-direction:column; }
     #editor-col{ max-width:none; }
@@ -394,8 +421,19 @@
         <h2>Превью</h2>
         <span id="preview-status">обновляется вживую</span>
       </div>
+
+      <div id="preview-controls">
+        <label class="grid-toggle">
+          <input type="checkbox" id="grid-toggle-cb"> Сетка
+        </label>
+        <input type="number" id="grid-step-input" value="40" min="10" max="200" title="Шаг сетки, px">
+        <button class="add-btn" id="preview-fullscreen-btn" type="button">⛶ На весь экран</button>
+        <button class="add-btn" id="preview-test-btn" type="button">▶ Тест в новой вкладке</button>
+      </div>
+
       <div id="preview-frame-wrap">
         <iframe id="preview-frame"></iframe>
+        <div id="preview-grid-overlay"></div>
       </div>
     </div>
   </div>
@@ -659,6 +697,41 @@
   const previewStatus = document.getElementById('preview-status');
   let previewTimer = null;
 
+  // ---------- Сетка поверх превью ----------
+  const gridToggleCb = document.getElementById('grid-toggle-cb');
+  const gridStepInput = document.getElementById('grid-step-input');
+  const gridOverlay = document.getElementById('preview-grid-overlay');
+
+  function updateGridSize(){
+    const step = parseInt(gridStepInput.value, 10) || 40;
+    gridOverlay.style.backgroundSize = `${step}px ${step}px`;
+  }
+  gridToggleCb.addEventListener('change', () => {
+    gridOverlay.classList.toggle('visible', gridToggleCb.checked);
+  });
+  gridStepInput.addEventListener('input', updateGridSize);
+  updateGridSize();
+
+  // ---------- Превью на весь экран ----------
+  const appEl = document.getElementById('app');
+  const previewFullscreenBtn = document.getElementById('preview-fullscreen-btn');
+  previewFullscreenBtn.addEventListener('click', () => {
+    appEl.classList.toggle('preview-fullscreen');
+    const isFull = appEl.classList.contains('preview-fullscreen');
+    previewFullscreenBtn.textContent = isFull ? '✕ Свернуть' : '⛶ На весь экран';
+    sizePreviewFrame();
+  });
+
+  // ---------- Тест в новой вкладке ----------
+  const previewTestBtn = document.getElementById('preview-test-btn');
+  previewTestBtn.addEventListener('click', () => {
+    const html = generateHTML();
+    const blob = new Blob([html], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  });
+
   function getFontPreset(){
     return FONT_PRESETS.find(f => f.id === state.fontPreset) || FONT_PRESETS[0];
   }
@@ -823,10 +896,12 @@
       </div>
       <div class="section-hint">Это главный экран игры — ученик выбирает одну из этих комнат в начале.</div>
 
-      <label class="cat-active-toggle" style="margin-bottom:16px;">
-        <input type="checkbox" id="location-select-cb" ${state.locationSelectEnabled ? 'checked' : ''}> Показывать экран выбора комнаты
-      </label>
-      <div class="section-hint" id="location-select-hint" style="margin-top:-10px;">
+      <div class="field-block">
+        <label class="cat-active-toggle" style="margin-bottom:0;">
+          <input type="checkbox" id="location-select-cb" ${state.locationSelectEnabled ? 'checked' : ''}> Показывать экран выбора комнаты
+        </label>
+      </div>
+      <div class="section-hint" id="location-select-hint" style="margin-top:-6px;">
         ${state.locationSelectEnabled ? 'Ученик увидит все локации и сам выберет одну перед началом.' : 'Экран выбора скрыт — игра сразу открывается в первой локации из списка ниже.'}
       </div>
 
