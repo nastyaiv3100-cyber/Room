@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="https://unpkg.com/terser@5.31.0/dist/bundle.min.js"></script>
 <style>
   :root{
     --wall-deep: #2a2420;
@@ -345,10 +346,11 @@
   #instructions ol{ margin:0; padding-left:20px; }
   #instructions li{ margin-bottom:6px; }
   #instructions code{
-    background:rgba(185,138,99,0.15);
-    padding:1px 6px; border-radius:5px;
-    color:var(--gold-soft);
+    background:rgba(255,255,255,0.1);
+    padding:2px 7px; border-radius:5px;
+    color:var(--gold);
     font-size:12.5px;
+    font-weight:700;
   }
 
   /* ---------- Шпаргалка формул ---------- */
@@ -405,6 +407,7 @@
     <div>
       <h1>Редактор комнаты</h1>
       <p>Настрой локации, задания, текст и дизайн — потом скачай готовую игру одним файлом</p>
+      <p style="margin-top:4px; font-size:12.5px;">Редактор Орловой А.Р. · канал <a href="https://t.me/lesson_play" target="_blank" rel="noopener" style="color:var(--gold); font-weight:600; text-decoration:none;">Урок на Play</a></p>
     </div>
   </header>
 
@@ -667,6 +670,34 @@
     const g = parseInt(hex.substring(2, 4), 16) || 0;
     const b = parseInt(hex.substring(4, 6), 16) || 0;
     return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  // ---------- Минификация игрового скрипта перед экспортом (Terser) ----------
+  async function minifyEngineScript(html){
+    if (!window.Terser || !window.Terser.minify){
+      return html; // библиотека не загрузилась — отдаём код как есть, без обфускации
+    }
+    const scriptOpenTag = '<script>';
+    const scriptCloseTag = '<\/script>';
+    const startIdx = html.lastIndexOf(scriptOpenTag);
+    const endIdx = html.lastIndexOf(scriptCloseTag);
+    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) return html;
+
+    const before = html.slice(0, startIdx + scriptOpenTag.length);
+    const code = html.slice(startIdx + scriptOpenTag.length, endIdx);
+    const after = html.slice(endIdx);
+
+    try {
+      const result = await window.Terser.minify(code, {
+        mangle: true,
+        compress: { drop_console: false },
+        format: { comments: false }
+      });
+      if (result.error || !result.code) return html;
+      return before + result.code + after;
+    } catch (e) {
+      return html; // если минификация не удалась — отдаём обычный (рабочий) вариант
+    }
   }
 
   const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 МБ
@@ -2090,7 +2121,6 @@
           <li>Замени такие картинки на обычные ссылки — залей их на GitHub (как остальные) и вставь ссылку вместо файла. Это САМОЕ частое решение.</li>
           <li>Если используешь <b>«Скопировать код для iframe»</b> — попробуй вместо этого вариант с GitHub-ссылкой: у вставки кода в Genially обычно более жёсткий лимит по размеру, чем у iframe с внешней ссылкой.</li>
           <li>Слишком много категорий/предметов в одной игре — раздели на 2 отдельные игры (например, по 4-5 категорий) и вставь как два разных блока в Genially.</li>
-          <li>Если ничего не помогает — напиши мне, пришлю облегчённую версию файла.</li>
         </ol>
       </div>
     `;
@@ -2165,8 +2195,11 @@
       e.target.value = '';
     });
 
-    wrap.querySelector('#download-btn').addEventListener('click', () => {
-      const html = generateHTML();
+    wrap.querySelector('#download-btn').addEventListener('click', async () => {
+      const infoEl = wrap.querySelector('#export-info');
+      infoEl.textContent = 'Сжимаю код...';
+      const rawHtml = generateHTML();
+      const html = await minifyEngineScript(rawHtml);
       const blob = new Blob([html], {type:'text/html'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2177,16 +2210,19 @@
       a.remove();
       URL.revokeObjectURL(url);
       const kb = Math.round(blob.size / 1024);
-      wrap.querySelector('#export-info').textContent = `Файл готов — ${kb} КБ`;
+      infoEl.textContent = `Файл готов — ${kb} КБ`;
     });
 
-    wrap.querySelector('#copy-btn').addEventListener('click', () => {
-      const html = generateHTML();
+    wrap.querySelector('#copy-btn').addEventListener('click', async () => {
+      const infoEl = wrap.querySelector('#export-info');
+      infoEl.textContent = 'Сжимаю код...';
+      const rawHtml = generateHTML();
+      const html = await minifyEngineScript(rawHtml);
       const iframeCode = `<iframe srcdoc="${escapeAttr(html)}" style="width:100%;height:700px;border:none;" allow="autoplay"></iframe>`;
       navigator.clipboard.writeText(iframeCode).then(() => {
-        wrap.querySelector('#export-info').textContent = 'Код iframe скопирован в буфер обмена';
+        infoEl.textContent = 'Код iframe скопирован в буфер обмена';
       }).catch(() => {
-        wrap.querySelector('#export-info').textContent = 'Не удалось скопировать — попробуй скачать HTML вместо этого';
+        infoEl.textContent = 'Не удалось скопировать — попробуй скачать HTML вместо этого';
       });
     });
   }
