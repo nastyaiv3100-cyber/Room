@@ -27,7 +27,7 @@
   *{box-sizing:border-box;}
   html,body{
     margin:0; padding:0; height:100%;
-    background:var(--ink);
+    background:var(--adaptive-bg, var(--ink));
     font-family:'Nunito Sans', sans-serif;
     color:var(--cream);
     overflow:hidden;
@@ -964,6 +964,45 @@
 
   function setLocation(url){
     room.style.backgroundImage = `url('${url}')`;
+    applyRoomColorTint(url);
+  }
+
+  // ---------- Подстройка фона под цвет комнаты ----------
+  function applyRoomColorTint(url){
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const size = 16;
+          const canvas = document.createElement('canvas');
+          canvas.width = size; canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, size, size);
+          const data = ctx.getImageData(0, 0, size, size).data;
+          let r = 0, g = 0, b = 0, count = 0;
+          for (let i = 0; i < data.length; i += 4){
+            r += data[i]; g += data[i + 1]; b += data[i + 2];
+            count++;
+          }
+          r = Math.round(r / count);
+          g = Math.round(g / count);
+          b = Math.round(b / count);
+
+          // Затемняем усреднённый цвет комнаты, чтобы получить тёмную подложку с тем же оттенком
+          const darkR = Math.round(r * 0.16);
+          const darkG = Math.round(g * 0.16);
+          const darkB = Math.round(b * 0.16);
+          const deepR = Math.round(r * 0.08);
+          const deepG = Math.round(g * 0.08);
+          const deepB = Math.round(b * 0.08);
+
+          document.documentElement.style.setProperty('--ink', `rgb(${darkR},${darkG},${darkB})`);
+          document.documentElement.style.setProperty('--wall-deep', `rgb(${deepR},${deepG},${deepB})`);
+        } catch (e) { /* картинка с другого домена без CORS — оставляем цвет по умолчанию */ }
+      };
+      img.src = url;
+    } catch (e) { /* игнорируем — используем цвет по умолчанию */ }
   }
 
   if (!LOCATION_SELECT_ENABLED){
