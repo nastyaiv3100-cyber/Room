@@ -581,6 +581,7 @@
   }
   .task-opt:hover{ background:rgba(255,255,255,0.1); box-shadow:0 0 12px rgba(255,130,52,0.4); }
   .task-opt.correct{ background:rgba(163,191,111,0.22); border-color:var(--glow); }
+  .task-opt.selected{ border-color:var(--gold); box-shadow:0 0 0 2px rgba(255,130,52,0.35) inset; }
   .task-opt.wrong{ background:rgba(226,87,76,0.22); border-color:var(--danger); }
 
   /* Верно / неверно */
@@ -602,6 +603,49 @@
   .tf-btn.wrong{ background:rgba(226,87,76,0.22); border-color:var(--danger); }
 
   /* Ввод ответа */
+  .examples-progress{
+    font-size:12.5px;
+    color:rgba(243,234,217,0.6);
+    margin-bottom:6px;
+    font-weight:700;
+    letter-spacing:0.3px;
+  }
+  .examples-question{
+    font-size:18px;
+    font-weight:700;
+    color:var(--gold-soft);
+    margin-bottom:14px;
+  }
+
+  /* Сравни числа */
+  .compare-row{
+    display:flex; align-items:center; justify-content:center;
+    gap:16px;
+    margin-bottom:14px;
+  }
+  .compare-num{
+    font-size:28px; font-weight:800;
+    color:var(--gold-soft);
+    min-width:44px;
+    text-align:center;
+  }
+  .compare-signs{ display:flex; gap:8px; }
+  .compare-sign-btn{
+    width:44px; height:44px;
+    font-size:20px; font-weight:800;
+    background:rgba(255,255,255,0.06);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border:1px solid rgba(255,130,52,0.4);
+    border-radius:10px;
+    color:#f3ead9;
+    cursor:pointer;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .compare-sign-btn:hover{ background:rgba(255,255,255,0.1); }
+  .compare-sign-btn.correct{ background:rgba(163,191,111,0.22); border-color:var(--glow); }
+  .compare-sign-btn.wrong{ background:rgba(226,87,76,0.22); border-color:var(--danger); }
+
   .input-row{ display:flex; gap:10px; }
   .input-field{
     flex:1;
@@ -703,13 +747,55 @@
     75%{ transform:translateX(5px); }
   }
 
-  #task-close{
+  #task-footer-row{
+    display:flex; align-items:center; justify-content:space-between;
     margin-top:18px;
+  }
+  #task-close{
     background:none; border:none;
     color:rgba(243,234,217,0.5);
     font-size:13px; cursor:pointer;
     text-decoration:underline;
   }
+  #draft-toggle{
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,130,52,0.35);
+    color:#f3ead9;
+    font-size:12.5px;
+    padding:7px 12px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  #draft-toggle:hover{ background:rgba(255,255,255,0.1); }
+  #draft-toggle.active{ border-color:var(--gold); background:rgba(255,130,52,0.15); }
+  #draft-panel{
+    display:none;
+    margin-top:12px;
+    padding:10px;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:10px;
+  }
+  #draft-panel.visible{ display:block; }
+  #draft-canvas{
+    display:block;
+    width:100%; height:160px;
+    background:rgba(255,255,255,0.9);
+    border-radius:8px;
+    cursor:crosshair;
+    touch-action:none;
+  }
+  #draft-clear{
+    margin-top:8px;
+    background:none;
+    border:1px solid rgba(255,130,52,0.35);
+    color:rgba(243,234,217,0.8);
+    font-size:12px;
+    padding:5px 12px;
+    border-radius:7px;
+    cursor:pointer;
+  }
+  #draft-clear:hover{ background:rgba(255,255,255,0.08); }
 </style>
 </head>
 <body>
@@ -749,7 +835,14 @@
       <img id="task-question-image" src="" alt="" style="display:none;">
       <p id="task-question"></p>
       <div id="task-body"></div>
-      <button id="task-close">Закрыть</button>
+      <div id="task-footer-row">
+        <button id="task-close">Закрыть</button>
+        <button id="draft-toggle" type="button">📝 Черновик</button>
+      </div>
+      <div id="draft-panel">
+        <canvas id="draft-canvas"></canvas>
+        <button id="draft-clear" type="button">Очистить</button>
+      </div>
     </div>
   </div>
 
@@ -1066,10 +1159,14 @@
     else if (type === 'match') renderMatchTask(task);
     else if (type === 'order') renderOrderTask(task);
     else if (type === 'sentence') renderSentenceTask(task);
+    else if (type === 'examples') renderExamplesTask(task);
+    else if (type === 'info') renderInfoTask(task);
+    else if (type === 'compare') renderCompareTask(task);
     else renderQuizTask(task);
 
     overlay.classList.add('visible');
     renderMathIn(document.getElementById('task-card'));
+    resetDraft();
   }
 
   function renderMathIn(el){
@@ -1185,23 +1282,73 @@
   function renderQuizTask(task){
     const wrap = document.createElement('div');
     wrap.className = 'task-options';
-    (task.options || []).forEach(opt => {
-      const btn = document.createElement('button');
-      btn.className = 'task-opt';
-      const imgHtml = opt.img ? `<img class="task-opt-image" src="${opt.img}" alt="">` : '';
-      btn.innerHTML = `${imgHtml}<span>${opt.text || ''}</span>`;
-      btn.addEventListener('click', () => {
-        if (opt.correct){
-          btn.classList.add('correct');
+    const options = task.options || [];
+
+    if (task.multiSelect){
+      const selected = new Set();
+      options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'task-opt';
+        const imgHtml = opt.img ? `<img class="task-opt-image" src="${opt.img}" alt="">` : '';
+        btn.innerHTML = `${imgHtml}<span>${opt.text || ''}</span>`;
+        btn.addEventListener('click', () => {
+          if (selected.has(i)){ selected.delete(i); btn.classList.remove('selected'); }
+          else { selected.add(i); btn.classList.add('selected'); }
+        });
+        wrap.appendChild(btn);
+      });
+      const checkBtn = document.createElement('button');
+      checkBtn.className = 'input-check-btn';
+      checkBtn.style.marginTop = '14px';
+      checkBtn.style.width = '100%';
+      checkBtn.textContent = 'Проверить';
+      const buttons = () => wrap.querySelectorAll('.task-opt');
+      checkBtn.addEventListener('click', () => {
+        const correctSet = new Set(options.map((o, i) => o.correct ? i : null).filter(i => i !== null));
+        const isCorrect = selected.size === correctSet.size && [...selected].every(i => correctSet.has(i));
+        if (isCorrect){
+          buttons().forEach((btn, i) => { if (correctSet.has(i)) btn.classList.add('correct'); });
           completeTask();
         } else {
-          btn.classList.add('wrong');
           playWrongSound();
-          setTimeout(() => btn.classList.remove('wrong'), 600);
+          buttons().forEach((btn, i) => {
+            if (selected.has(i) && !correctSet.has(i)) btn.classList.add('wrong');
+          });
+          setTimeout(() => { buttons().forEach(btn => btn.classList.remove('wrong')); }, 600);
         }
       });
-      wrap.appendChild(btn);
-    });
+      wrap.appendChild(checkBtn);
+    } else {
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'task-opt';
+        const imgHtml = opt.img ? `<img class="task-opt-image" src="${opt.img}" alt="">` : '';
+        btn.innerHTML = `${imgHtml}<span>${opt.text || ''}</span>`;
+        btn.addEventListener('click', () => {
+          if (opt.correct){
+            btn.classList.add('correct');
+            completeTask();
+          } else {
+            btn.classList.add('wrong');
+            playWrongSound();
+            setTimeout(() => btn.classList.remove('wrong'), 600);
+          }
+        });
+        wrap.appendChild(btn);
+      });
+    }
+    taskBody.appendChild(wrap);
+  }
+
+  // ---- Тип: без ответа (просто вопрос) ----
+  function renderInfoTask(task){
+    const wrap = document.createElement('div');
+    const btn = document.createElement('button');
+    btn.className = 'input-check-btn';
+    btn.style.width = '100%';
+    btn.textContent = task.buttonText || 'Понятно, дальше';
+    btn.addEventListener('click', () => completeTask());
+    wrap.appendChild(btn);
     taskBody.appendChild(wrap);
   }
 
@@ -1258,6 +1405,128 @@
     wrap.querySelector('.input-check-btn').addEventListener('click', check);
     field.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
     taskBody.appendChild(wrap);
+  }
+
+  // ---- Тип: несколько примеров подряд ----
+  function renderExamplesTask(task){
+    const examples = task.examples || [];
+    let idx = 0;
+
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="examples-progress">Пример <span class="ex-current">1</span> из <span class="ex-total">${examples.length}</span></div>
+      <div class="examples-question"></div>
+      <div class="input-row">
+        <input type="text" class="input-field" autocomplete="off" placeholder="Введи ответ">
+        <button class="input-check-btn">Проверить</button>
+      </div>
+      <div class="input-feedback"></div>
+    `;
+    const progressCurrent = wrap.querySelector('.ex-current');
+    const questionEl = wrap.querySelector('.examples-question');
+    const field = wrap.querySelector('.input-field');
+    const feedback = wrap.querySelector('.input-feedback');
+
+    function showExample(){
+      progressCurrent.textContent = idx + 1;
+      questionEl.textContent = examples[idx] ? examples[idx].question : '';
+      field.value = '';
+      field.classList.remove('correct', 'wrong');
+      feedback.textContent = '';
+      feedback.className = 'input-feedback';
+      renderMathIn(document.getElementById('task-card'));
+      field.focus();
+    }
+
+    const check = () => {
+      const given = field.value.trim().toLowerCase();
+      const correct = String((examples[idx] || {}).answer || '').trim().toLowerCase();
+      if (given.length && given === correct){
+        field.classList.remove('wrong'); field.classList.add('correct');
+        feedback.textContent = 'Верно!';
+        feedback.className = 'input-feedback correct';
+        idx++;
+        if (idx >= examples.length){
+          setTimeout(() => completeTask(), 500);
+        } else {
+          setTimeout(showExample, 500);
+        }
+      } else {
+        field.classList.remove('correct'); field.classList.add('wrong');
+        feedback.textContent = 'Попробуй ещё раз';
+        feedback.className = 'input-feedback wrong';
+        playWrongSound();
+      }
+    };
+    wrap.querySelector('.input-check-btn').addEventListener('click', check);
+    field.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+
+    taskBody.appendChild(wrap);
+    showExample();
+  }
+
+  // ---- Тип: сравни числа ----
+  function renderCompareTask(task){
+    const items = task.compareItems || [];
+    let idx = 0;
+
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="examples-progress">Пример <span class="cmp-current">1</span> из <span class="cmp-total">${items.length}</span></div>
+      <div class="compare-row">
+        <span class="compare-num compare-left"></span>
+        <div class="compare-signs">
+          <button class="compare-sign-btn" data-sign="<">&lt;</button>
+          <button class="compare-sign-btn" data-sign=">">&gt;</button>
+          <button class="compare-sign-btn" data-sign="=">=</button>
+        </div>
+        <span class="compare-num compare-right"></span>
+      </div>
+      <div class="input-feedback"></div>
+    `;
+    const progressCurrent = wrap.querySelector('.cmp-current');
+    const leftEl = wrap.querySelector('.compare-left');
+    const rightEl = wrap.querySelector('.compare-right');
+    const feedback = wrap.querySelector('.input-feedback');
+    const signButtons = wrap.querySelectorAll('.compare-sign-btn');
+
+    function showItem(){
+      progressCurrent.textContent = idx + 1;
+      const item = items[idx] || {};
+      leftEl.textContent = item.left != null ? item.left : '';
+      rightEl.textContent = item.right != null ? item.right : '';
+      feedback.textContent = '';
+      feedback.className = 'input-feedback';
+      signButtons.forEach(b => b.classList.remove('correct', 'wrong'));
+      renderMathIn(document.getElementById('task-card'));
+    }
+
+    signButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const chosen = btn.dataset.sign;
+        const correct = String((items[idx] || {}).answer || '').trim();
+        if (chosen === correct){
+          btn.classList.add('correct');
+          feedback.textContent = 'Верно!';
+          feedback.className = 'input-feedback correct';
+          idx++;
+          if (idx >= items.length){
+            setTimeout(() => completeTask(), 500);
+          } else {
+            setTimeout(showItem, 500);
+          }
+        } else {
+          btn.classList.add('wrong');
+          feedback.textContent = 'Попробуй ещё раз';
+          feedback.className = 'input-feedback wrong';
+          playWrongSound();
+          setTimeout(() => btn.classList.remove('wrong'), 500);
+        }
+      });
+    });
+
+    taskBody.appendChild(wrap);
+    showItem();
   }
 
   // ---- Тип: соединение пар ----
@@ -1450,6 +1719,66 @@
   }
 
   taskClose.addEventListener('click', () => overlay.classList.remove('visible'));
+
+  // ---------- Черновик (рисование в задании) ----------
+  const draftToggle = document.getElementById('draft-toggle');
+  const draftPanel = document.getElementById('draft-panel');
+  const draftCanvas = document.getElementById('draft-canvas');
+  const draftClear = document.getElementById('draft-clear');
+  const draftCtx = draftCanvas.getContext('2d');
+  let draftDrawing = false;
+  let draftSized = false;
+
+  function sizeDraftCanvas(){
+    const rect = draftCanvas.getBoundingClientRect();
+    draftCanvas.width = rect.width;
+    draftCanvas.height = rect.height;
+    draftCtx.lineWidth = 2.5;
+    draftCtx.lineCap = 'round';
+    draftCtx.strokeStyle = '#2c2116';
+  }
+
+  function clearDraft(){
+    draftCtx.clearRect(0, 0, draftCanvas.width, draftCanvas.height);
+  }
+
+  function resetDraft(){
+    draftPanel.classList.remove('visible');
+    draftToggle.classList.remove('active');
+    if (draftSized) clearDraft();
+  }
+
+  draftToggle.addEventListener('click', () => {
+    const willShow = !draftPanel.classList.contains('visible');
+    draftPanel.classList.toggle('visible', willShow);
+    draftToggle.classList.toggle('active', willShow);
+    if (willShow && !draftSized){
+      sizeDraftCanvas();
+      draftSized = true;
+    }
+  });
+
+  draftClear.addEventListener('click', clearDraft);
+
+  function draftPos(e){
+    const rect = draftCanvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+  draftCanvas.addEventListener('pointerdown', (e) => {
+    draftDrawing = true;
+    const p = draftPos(e);
+    draftCtx.beginPath();
+    draftCtx.moveTo(p.x, p.y);
+    draftCanvas.setPointerCapture(e.pointerId);
+  });
+  draftCanvas.addEventListener('pointermove', (e) => {
+    if (!draftDrawing) return;
+    const p = draftPos(e);
+    draftCtx.lineTo(p.x, p.y);
+    draftCtx.stroke();
+  });
+  draftCanvas.addEventListener('pointerup', () => { draftDrawing = false; });
+  draftCanvas.addEventListener('pointercancel', () => { draftDrawing = false; });
 
   function solveCategory(cat){
     cat.solved = true;
