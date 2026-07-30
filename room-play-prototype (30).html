@@ -44,7 +44,7 @@
     position:absolute;
     top:14px; left:14px; right:224px;
     display:flex; align-items:center; gap:14px;
-    z-index:20;
+    z-index:300;
   }
   #progress-track{
     flex:1;
@@ -91,7 +91,7 @@
   /* ---------- Стартовый экран выбора локации ---------- */
   #location-screen{
     position:fixed; inset:0;
-    z-index:100;
+    z-index:600;
     background:radial-gradient(circle at 50% 30%, #3d2f1e, #1c160f 75%);
     display:none; flex-direction:column; align-items:center; justify-content:flex-start;
     overflow-y:auto;
@@ -185,6 +185,8 @@
 
   /* ---------- Список категорий (справа, сплошная колонка) ---------- */
   #category-list{
+    position:relative;
+    z-index:300;
     flex:0 0 210px;
     background:
       linear-gradient(180deg, rgba(255,255,255,0.4), transparent 10%),
@@ -346,6 +348,8 @@
 
   /* ---------- Инвентарь ---------- */
   #tray{
+    position:relative;
+    z-index:300;
     flex:0 0 auto;
     max-height:190px;
     background:
@@ -421,7 +425,7 @@
     position:fixed; inset:0;
     background:rgba(10,7,16,0.72);
     display:none; align-items:center; justify-content:center;
-    z-index:50;
+    z-index:400;
   }
   #task-overlay.visible{ display:flex; }
 
@@ -430,14 +434,14 @@
     position:fixed; inset:0;
     background:rgba(10,7,16,0.82);
     display:none; align-items:center; justify-content:center;
-    z-index:200;
+    z-index:700;
     padding:24px;
   }
   #completion-screen.visible{ display:flex; }
   #confetti-layer{
     position:fixed; inset:0;
     pointer-events:none;
-    z-index:210;
+    z-index:710;
     overflow:hidden;
   }
   .confetti-piece{
