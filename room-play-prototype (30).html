@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 <style>
   :root{
     --wall-deep: #2c2116;
@@ -93,13 +93,14 @@
     position:fixed; inset:0;
     z-index:100;
     background:radial-gradient(circle at 50% 30%, #3d2f1e, #1c160f 75%);
-    display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    display:none; flex-direction:column; align-items:center; justify-content:flex-start;
     overflow-y:auto;
     gap:22px;
     padding:48px 24px;
     scrollbar-width:thin;
     scrollbar-color:rgba(255,130,52,0.5) transparent;
   }
+  #location-screen.visible{ display:flex; }
   #location-screen::-webkit-scrollbar{ width:7px; }
   #location-screen::-webkit-scrollbar-track{ background:transparent; }
   #location-screen::-webkit-scrollbar-thumb{
@@ -1105,8 +1106,8 @@
 
   if (!LOCATION_SELECT_ENABLED){
     if (locations.length) setLocation(locations[0].url);
-    locationScreen.style.display = 'none';
   } else {
+    locationScreen.classList.add('visible');
     locations.forEach((loc, i) => {
       const card = document.createElement('div');
       card.className = 'location-card';
@@ -1114,7 +1115,7 @@
       card.innerHTML = `<div class="location-card-label">Комната ${i + 1}</div>`;
       card.addEventListener('click', () => {
         setLocation(loc.url);
-        locationScreen.style.display = 'none';
+        locationScreen.classList.remove('visible');
       });
       locationGrid.appendChild(card);
     });
