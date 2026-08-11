@@ -538,9 +538,20 @@
     border:1px solid rgba(255,255,255,0.14);
     border-radius:16px;
     padding:28px 30px;
-    width:min(420px, 88vw);
+    width:min(420px, 92vw);
+    max-height:88vh;
+    overflow-y:auto;
     box-shadow:0 0 24px rgba(255,130,52,0.25), 0 20px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,130,52,0.5) transparent;
   }
+  #task-card::-webkit-scrollbar{ width:7px; }
+  #task-card::-webkit-scrollbar-track{ background:transparent; }
+  #task-card::-webkit-scrollbar-thumb{
+    background:rgba(255,130,52,0.45);
+    border-radius:4px;
+  }
+  #task-card::-webkit-scrollbar-thumb:hover{ background:rgba(255,130,52,0.7); }
   #task-card h3{
     font-family:'Cormorant Garamond', serif;
     font-size:26px;
