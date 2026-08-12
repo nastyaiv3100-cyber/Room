@@ -1325,7 +1325,7 @@
       checkBtn.className = 'input-check-btn';
       checkBtn.style.marginTop = '14px';
       checkBtn.style.width = '100%';
-      checkBtn.textContent = 'Проверить';
+      checkBtn.textContent = CHECK_BUTTON_TEXT;
       const buttons = () => wrap.querySelectorAll('.task-opt');
       checkBtn.addEventListener('click', () => {
         const correctSet = new Set(options.map((o, i) => o.correct ? i : null).filter(i => i !== null));
@@ -1405,7 +1405,7 @@
     wrap.innerHTML = `
       <div class="input-row">
         <input type="text" class="input-field" placeholder="Введи ответ">
-        <button class="input-check-btn">Проверить</button>
+        <button class="input-check-btn">${CHECK_BUTTON_TEXT}</button>
       </div>
       <div class="input-feedback"></div>
     `;
@@ -1442,7 +1442,7 @@
       <div class="examples-question"></div>
       <div class="input-row">
         <input type="text" class="input-field" autocomplete="off" placeholder="Введи ответ">
-        <button class="input-check-btn">Проверить</button>
+        <button class="input-check-btn">${CHECK_BUTTON_TEXT}</button>
       </div>
       <div class="input-feedback"></div>
     `;
@@ -2032,6 +2032,7 @@
   // ---------- Экран поздравления при 100% ----------
   const TRUE_LABEL = 'Верно';
   const FALSE_LABEL = 'Неверно';
+  const CHECK_BUTTON_TEXT = 'Проверить';
   const COMPLETION_ENABLED = true;
   const completionScreen = document.getElementById('completion-screen');
   const completionImage = document.getElementById('completion-image');
