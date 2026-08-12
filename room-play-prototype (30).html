@@ -1075,6 +1075,7 @@
   const locationGrid = document.getElementById('location-grid');
   const locationScreen = document.getElementById('location-screen');
   const LOCATION_SELECT_ENABLED = true;
+  const ROOM_WORD_TEXT = 'Комната';
 
   function setLocation(url){
     room.style.backgroundImage = `url('${url}')`;
@@ -1127,7 +1128,7 @@
       const card = document.createElement('div');
       card.className = 'location-card';
       card.style.backgroundImage = `url('${loc.url}')`;
-      card.innerHTML = `<div class="location-card-label">Комната ${i + 1}</div>`;
+      card.innerHTML = `<div class="location-card-label">${ROOM_WORD_TEXT} ${i + 1}</div>`;
       card.addEventListener('click', () => {
         setLocation(loc.url);
         locationScreen.classList.remove('visible');
@@ -1404,7 +1405,7 @@
     const wrap = document.createElement('div');
     wrap.innerHTML = `
       <div class="input-row">
-        <input type="text" class="input-field" placeholder="Введи ответ">
+        <input type="text" class="input-field" placeholder="${INPUT_PLACEHOLDER_TEXT}">
         <button class="input-check-btn">${CHECK_BUTTON_TEXT}</button>
       </div>
       <div class="input-feedback"></div>
@@ -1441,7 +1442,7 @@
       <div class="examples-progress">Пример <span class="ex-current">1</span> из <span class="ex-total">${examples.length}</span></div>
       <div class="examples-question"></div>
       <div class="input-row">
-        <input type="text" class="input-field" autocomplete="off" placeholder="Введи ответ">
+        <input type="text" class="input-field" autocomplete="off" placeholder="${INPUT_PLACEHOLDER_TEXT}">
         <button class="input-check-btn">${CHECK_BUTTON_TEXT}</button>
       </div>
       <div class="input-feedback"></div>
@@ -2033,6 +2034,7 @@
   const TRUE_LABEL = 'Верно';
   const FALSE_LABEL = 'Неверно';
   const CHECK_BUTTON_TEXT = 'Проверить';
+  const INPUT_PLACEHOLDER_TEXT = 'Введи ответ';
   const COMPLETION_ENABLED = true;
   const completionScreen = document.getElementById('completion-screen');
   const completionImage = document.getElementById('completion-image');
