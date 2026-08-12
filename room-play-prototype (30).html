@@ -1190,7 +1190,8 @@
     resetDraft();
   }
 
-  function renderMathIn(el){
+  function renderMathIn(el, attemptsLeft){
+    if (attemptsLeft === undefined) attemptsLeft = 40;
     if (window.renderMathInElement){
       renderMathInElement(el, {
         delimiters: [
@@ -1199,6 +1200,8 @@
         ],
         throwOnError: false
       });
+    } else if (attemptsLeft > 0){
+      setTimeout(() => renderMathIn(el, attemptsLeft - 1), 100);
     }
   }
 
@@ -1710,6 +1713,7 @@
         assembledRow.innerHTML = words.slice(0, nextIndex)
           .map(w => `<span class="sentence-word">${w}</span>`).join(' ');
       }
+      renderMathIn(document.getElementById('task-card'));
     }
     renderAssembled();
 
